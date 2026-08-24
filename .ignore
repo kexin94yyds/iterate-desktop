@@ -1,0 +1,11 @@
+.cunzhi-knowledge/**
+.cunzhi-memory/checkpoints.jsonl
+.cunzhi-memory/checkpoint_links.jsonl
+.cunzhi-memory/tasks.json
+.cunzhi-memory/app-workflow-runs/**
+.cunzhi-memory/auto-transport-runs/**
+.cunzhi-memory/runtime-logs/**
+.cunzhi-memory/codex-room/**
+.cunzhi-memory/cpu-guard/**
+.cunzhi-memory/**/*.jsonl
+.cunzhi-memory/**/*.log

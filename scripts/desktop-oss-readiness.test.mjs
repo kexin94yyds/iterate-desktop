@@ -1,0 +1,246 @@
+import assert from 'node:assert/strict'
+import { mkdtemp, mkdir, readFile, rm, symlink } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import test from 'node:test'
+
+import {
+  auditPackageScriptFiles,
+  auditPackageScripts,
+  auditSourceAssetPolicy,
+  auditWorkflowActionPins,
+  scanTextFindings,
+  selectIncludedPaths,
+  validateExportDestination,
+} from './export-desktop-oss.mjs'
+
+const manifest = JSON.parse(await readFile(new URL('../open-source-manifest.json', import.meta.url), 'utf8'))
+
+function windowsDriveUserPath(user) {
+  return ['C:', 'Users', user, 'project'].join('\\')
+}
+
+function windowsUncUserPath(user) {
+  return `\\\\${['fileserver', 'Users', user, 'project'].join('\\')}`
+}
+
+test('desktop allowlist includes the buildable core and excludes private clients and artifacts', () => {
+  const selected = selectIncludedPaths(manifest, [
+    'src/rust/lib.rs',
+    'src/frontend/main.ts',
+    'src/bin/mcp-server.rs',
+    'scripts/release-sign-assets.mjs',
+    'scripts/desktop-codex-live-source.test.mjs',
+    'Cargo.toml',
+    'LICENSE',
+    'open-source-manifest.json',
+    'ios-app/IterateNotify/ContentView.swift',
+    'browser-extension/background.js',
+    'vscode-extension/src/extension.ts',
+    '.cunzhi-memory/context.md',
+    'app-main-BnTSnuSB.js',
+    'release-package/windsurf-cunzhi',
+    'scripts/xhs_ai_weekly_report.mjs',
+  ])
+
+  assert.deepEqual(selected, [
+    'Cargo.toml',
+    'LICENSE',
+    'open-source-manifest.json',
+    'scripts/desktop-codex-live-source.test.mjs',
+    'scripts/release-sign-assets.mjs',
+    'src/bin/mcp-server.rs',
+    'src/frontend/main.ts',
+    'src/rust/lib.rs',
+  ])
+})
+
+test('desktop source excludes uncleared audio while preserving the empty resource directory', () => {
+  const selected = selectIncludedPaths(manifest, [
+    'src/rust/assets/resources/README.md',
+    'src/rust/assets/resources/level-up-191997[level-up-191997].mp3',
+    'src/rust/assets/resources/mixkit-correct-answer-tone-2870[mixkit-correct-answer-tone-2870].wav',
+  ])
+
+  assert.deepEqual(selected, ['src/rust/assets/resources/README.md'])
+})
+
+test('desktop source gate rejects future audio even when its bytes look textual', () => {
+  assert.deepEqual(
+    auditSourceAssetPolicy('src/rust/assets/resources/future-tone.mp3'),
+    [{
+      code: 'audio-source-file-not-allowed',
+      path: 'src/rust/assets/resources/future-tone.mp3',
+    }],
+  )
+  assert.deepEqual(
+    auditSourceAssetPolicy('src/rust/assets/resources/README.md'),
+    [],
+  )
+})
+
+test('sensitive content findings never echo matched secret material', () => {
+  const privateKey = [
+    '-----BEGIN',
+    'PRIVATE KEY-----',
+    'TEST',
+    '-----END PRIVATE KEY-----',
+  ].join('\n').replace('BEGIN\nPRIVATE', 'BEGIN PRIVATE')
+  const personalPath = ['/Users', 'private-person', 'project'].join('/')
+  const windowsPath = windowsDriveUserPath('private-person')
+  const uncPath = windowsUncUserPath('private-person')
+  const findings = scanTextFindings(
+    'src/example.rs',
+    [
+      `const KEY: &str = ${JSON.stringify(privateKey)};`,
+      `const PATH: &str = ${JSON.stringify(personalPath)};`,
+      `WINDOWS_PATH=${windowsPath}`,
+      `UNC_PATH=${uncPath}`,
+    ].join('\n'),
+  )
+
+  assert.deepEqual(findings.map(finding => finding.code), [
+    'private-key-material',
+    'personal-absolute-path',
+    'personal-absolute-path',
+    'personal-absolute-path',
+  ])
+  assert.ok(findings.every(finding => !JSON.stringify(finding).includes('TEST')))
+  assert.ok(findings.every(finding => !JSON.stringify(finding).includes('private-person')))
+})
+
+test('GitHub Actions must use immutable SHAs while local actions remain allowed', () => {
+  assert.deepEqual(
+    auditWorkflowActionPins('.github/workflows/ci.yml', `
+steps:
+  - uses: actions/checkout@v4
+  - uses: owner/action@0123456789abcdef0123456789abcdef01234567 # v1
+  - uses: ./actions/local
+`),
+    [{ code: 'unpinned-action', path: '.github/workflows/ci.yml', line: 3 }],
+  )
+})
+
+test('Windows path scanning catches raw and source-escaped user directories', () => {
+  const privateDrive = windowsDriveUserPath('private-person')
+  const privateUnc = windowsUncUserPath('private-person')
+  const privatePaths = [
+    privateDrive,
+    `const p = ${JSON.stringify(privateDrive)};`,
+    privateUnc,
+    `const p = ${JSON.stringify(privateUnc)};`,
+  ]
+  const placeholders = [
+    windowsDriveUserPath('example'),
+    `const p = ${JSON.stringify(windowsDriveUserPath('username'))};`,
+    windowsUncUserPath('runner'),
+  ]
+
+  for (const privatePath of privatePaths) {
+    assert.ok(
+      scanTextFindings('src/example.rs', privatePath)
+        .some(finding => finding.code === 'personal-absolute-path'),
+      `expected private path finding for ${privatePath}`,
+    )
+  }
+  for (const placeholder of placeholders) {
+    assert.equal(
+      scanTextFindings('src/example.rs', placeholder)
+        .some(finding => finding.code === 'personal-absolute-path'),
+      false,
+      `placeholder should be allowed: ${placeholder}`,
+    )
+  }
+})
+
+test('public package scripts cannot depend on excluded private modules', () => {
+  const findings = auditPackageScripts('package.json', JSON.stringify({
+    scripts: {
+      build: 'vite build',
+      'test:frontend-service': 'node --test src/frontend/services/bridgeFetch.test.ts',
+      'test:private-ios': 'node --test ios-app/Tests/source.test.mjs',
+      'test:private-extension': 'node --test browser-extension/background.test.mjs',
+    },
+  }))
+
+  assert.deepEqual(findings.map(finding => finding.script), [
+    'test:private-extension',
+    'test:private-ios',
+  ])
+  assert.ok(findings.every(finding => finding.code === 'excluded-path-reference'))
+})
+
+test('public package scripts must reference files present in the export selection', () => {
+  const findings = auditPackageScriptFiles('package.json', JSON.stringify({
+    scripts: {
+      good: 'node --test scripts/desktop-ok.test.mjs src/frontend/example.test.ts',
+      missing: 'bash ./scripts/desktop-missing.sh',
+    },
+  }), [
+    'scripts/desktop-ok.test.mjs',
+    'src/frontend/example.test.ts',
+  ])
+
+  assert.deepEqual(findings, [{
+    code: 'missing-script-file',
+    path: 'scripts/desktop-missing.sh',
+    script: 'missing',
+  }])
+})
+
+test('public release and test transitive inputs are required export files', () => {
+  const requiredInputs = [
+    'docs/iterate_安装指南.md',
+    'docs/release/INSTALLATION.md',
+    'docs/release/INSTALL_PROMPT.md',
+    'docs/verification-receipt-v0.md',
+    'docs/worker-handoff-schema-v0.md',
+    'scripts/desktop-bridge-web-push-security.test.mjs',
+    'scripts/desktop-build-rs-target-gating.test.mjs',
+    'scripts/desktop-codex-live-source.test.mjs',
+    'scripts/desktop-ghost-suggestion-priority.test.mjs',
+    'scripts/desktop-speech-frontend-ownership.test.mjs',
+  ]
+
+  for (const requiredInput of requiredInputs) {
+    assert.ok(
+      manifest.requiredFiles.includes(requiredInput),
+      `missing required export input: ${requiredInput}`,
+    )
+  }
+})
+
+test('desktop Tauri config does not retain private mobile signing configuration', async () => {
+  const tauriConfig = JSON.parse(
+    await readFile(new URL('../tauri.conf.json', import.meta.url), 'utf8'),
+  )
+  assert.equal(tauriConfig.bundle.iOS, undefined)
+  assert.equal(JSON.stringify(tauriConfig).includes('developmentTeam'), false)
+})
+
+test('export destination must stay outside the real source worktree', async () => {
+  const fixtureRoot = await mkdtemp(path.join(tmpdir(), 'iterate-oss-destination-'))
+  const sourceRoot = path.join(fixtureRoot, 'source')
+  const outsideRoot = path.join(fixtureRoot, 'outside')
+  const sourceAlias = path.join(fixtureRoot, 'source-alias')
+  await mkdir(sourceRoot)
+  await mkdir(outsideRoot)
+  await symlink(sourceRoot, sourceAlias, 'dir')
+
+  try {
+    assert.throws(
+      () => validateExportDestination(sourceRoot, path.join(sourceRoot, 'export')),
+      /outside the source worktree/,
+    )
+    assert.throws(
+      () => validateExportDestination(sourceRoot, path.join(sourceAlias, 'export')),
+      /outside the source worktree/,
+    )
+    assert.doesNotThrow(
+      () => validateExportDestination(sourceRoot, path.join(outsideRoot, 'export')),
+    )
+  }
+  finally {
+    await rm(fixtureRoot, { recursive: true })
+  }
+})

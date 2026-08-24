@@ -1,0 +1,459 @@
+/* 语义化 CSS 变量 - 由主题系统动态设置 */
+:root {
+  /* 使用中性的初始值，等待主题系统设置正确的值 */
+  --color-surface: #f5f5f5;
+  --color-surface-50: #f9f9f9;
+  --color-surface-100: #f0f0f0;
+  --color-surface-200: #e0e0e0;
+  --color-surface-300: #d0d0d0;
+  --color-surface-400: #a0a0a0;
+  --color-surface-500: #808080;
+  --color-surface-600: #606060;
+  --color-surface-700: #404040;
+  --color-surface-800: #303030;
+  --color-surface-900: #202020;
+  --color-surface-950: #101010;
+  --color-on-surface: #333333;
+
+  /* 字体变量 - 由字体管理器动态设置 */
+  --font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --body-font-family: var(--font-family);
+  --font-size-scale: 1.0;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.125rem;
+  --font-size-2xl: 1.25rem;
+  --font-size-3xl: 1.5rem;
+
+  /* 基础字体设置 */
+  --font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+/* UnoCSS 自定义样式 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 全局样式重置 */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: var(--body-color, #f5f5f5);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--body-color, #f5f5f5);
+  color: var(--text-color, #333333);
+  min-height: 100vh;
+}
+
+/* 字体大小工具类 */
+.text-xs { font-size: var(--font-size-xs); }
+.text-sm { font-size: var(--font-size-sm); }
+.text-base { font-size: var(--font-size-base); }
+.text-lg { font-size: var(--font-size-lg); }
+.text-xl { font-size: var(--font-size-xl); }
+.text-2xl { font-size: var(--font-size-2xl); }
+.text-3xl { font-size: var(--font-size-3xl); }
+
+/* 确保引用块的边框在所有主题下都显示 */
+.markdown-content blockquote {
+  border-left: 4px solid #000000 !important;
+  padding-left: 1rem !important;
+  margin-left: 0 !important;
+  font-style: italic !important;
+}
+
+/* 覆盖 Naive UI 输入框的边框颜色为黑色 - 使用 CSS 变量覆盖 */
+.n-input {
+  --n-border-focus: 1px solid #000000 !important;
+  --n-border-hover: 1px solid #333333 !important;
+  --n-box-shadow-focus: 0 0 0 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+.n-input:focus-within,
+.n-input.n-input--focus,
+.n-input--focus,
+.n-input.n-input--textarea:focus-within {
+  border: 1px solid #000000 !important;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+.n-input:hover:not(.n-input--disabled),
+.n-input.n-input--textarea:hover:not(.n-input--disabled) {
+  border: 1px solid #333333 !important;
+}
+
+/* 覆盖 Naive UI 输入框 wrapper 的边框 */
+.n-input__border,
+.n-input__state-border {
+  border-color: #000000 !important;
+}
+
+.n-input:focus-within .n-input__state-border,
+.n-input.n-input--focus .n-input__state-border {
+  border: 1px solid #000000 !important;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+.popup-main-input-shell {
+  position: relative;
+}
+
+.popup-main-input {
+  display: block;
+  width: 100%;
+  min-height: calc(3 * 1.6em + 18px);
+  max-height: calc(6 * 1.6em + 18px);
+  padding: 9px 14px;
+  border: 1px solid #000000;
+  border-radius: 8px;
+  outline: none;
+  background: var(--color-container, #ffffff);
+  color: var(--color-on-surface, #111827);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  overflow-y: auto;
+  resize: none;
+  transition: border-color 100ms ease, box-shadow 100ms ease;
+}
+
+.popup-main-input:hover:not(:disabled) {
+  border-color: #333333;
+}
+
+.popup-main-input:focus {
+  border-color: #000000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.popup-main-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.popup-main-input-shell--dragover {
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.18);
+}
+
+.popup-main-input-shell--dragover .popup-main-input {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.14);
+}
+
+.popup-main-input-ghost {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  box-sizing: border-box;
+  display: block;
+  padding: var(--ghost-padding-top, 9px) var(--ghost-padding-right, 14px) var(--ghost-padding-bottom, 9px) var(--ghost-padding-left, 14px);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  font-size: var(--ghost-font-size, var(--font-size-base));
+  line-height: var(--ghost-line-height, 1.6);
+  font-family: var(--ghost-font-family, var(--font-family-sans));
+  letter-spacing: var(--ghost-letter-spacing, normal);
+}
+
+.popup-main-input-ghost__typed {
+  color: #111827;
+}
+
+.popup-main-input-ghost__suffix {
+  color: rgba(107, 114, 128, 0.72);
+}
+
+.popup-main-input--ghosting {
+  color: transparent !important;
+  caret-color: #111827 !important;
+}
+
+.dark .popup-main-input-ghost__typed,
+[data-theme="dark"] .popup-main-input-ghost__typed {
+  color: #f3f4f6;
+}
+
+.dark .popup-main-input-ghost__suffix,
+[data-theme="dark"] .popup-main-input-ghost__suffix {
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.dark .popup-main-input--ghosting,
+[data-theme="dark"] .popup-main-input--ghosting {
+  caret-color: #f3f4f6 !important;
+}
+
+.dark .popup-main-input,
+[data-theme="dark"] .popup-main-input {
+  border-color: rgba(96, 165, 250, 0.24);
+  background-color: #10161f;
+  color: #e5e7eb;
+}
+
+.dark .popup-main-input:hover:not(:disabled),
+[data-theme="dark"] .popup-main-input:hover:not(:disabled) {
+  border-color: rgba(96, 165, 250, 0.42);
+}
+
+.dark .popup-main-input:focus,
+[data-theme="dark"] .popup-main-input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.14);
+}
+
+.popup-status-dot {
+  background-color: #60a5fa !important;
+}
+
+/* 覆盖 Naive UI 复选框的主色调 */
+.n-checkbox.n-checkbox--checked .n-checkbox-box {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+/* 深色模式下复选框边框改为白色 */
+.dark .n-checkbox .n-checkbox-box {
+  border-color: #ffffff !important;
+}
+
+.dark .n-checkbox.n-checkbox--checked .n-checkbox-box {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+/* 深色模式下复选框勾选图标改为黑色 */
+.dark .n-checkbox.n-checkbox--checked .n-checkbox-box .n-checkbox-icon {
+  color: #000000 !important;
+}
+
+/* 覆盖 Naive UI 开关的主色调 */
+.n-switch.n-switch--active .n-switch__rail {
+  background-color: #000000 !important;
+}
+
+/* 覆盖 Naive UI 按钮样式 - 实现 tobooks 的 3D 凹陷效果 */
+.n-button {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid transparent !important;
+}
+
+.n-button:hover:not(.n-button--disabled) {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+}
+
+.n-button:active:not(.n-button--disabled),
+.n-button--pressed {
+  transform: translateY(1px) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 黑色主题按钮 (Primary) */
+.n-button--primary-type {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.n-button--primary-type:hover:not(.n-button--disabled) {
+  background-color: #1a1a1a !important;
+}
+
+/* 蓝色主题按钮 (Info) - 改为中性灰色 */
+.n-button--info-type {
+  background-color: #4b5563 !important;
+  border-color: #4b5563 !important;
+  color: #ffffff !important;
+}
+
+.n-button--info-type:hover:not(.n-button--disabled) {
+  background-color: #374151 !important;
+}
+
+/* 默认按钮 (Default) */
+.n-button--default-type:not(.n-button--primary-type):not(.n-button--info-type) {
+  background-color: #ffffff !important;
+  border-color: #dcdcdc !important;
+  color: #333333 !important;
+}
+
+.n-button--default-type:not(.n-button--primary-type):not(.n-button--info-type):hover:not(.n-button--disabled) {
+  background-color: #f5f5f5 !important;
+  border-color: #cccccc !important;
+}
+
+/* Quaternary 按钮 (无背景) */
+.n-button--quaternary {
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+.n-button--quaternary:hover:not(.n-button--disabled) {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  box-shadow: none !important;
+  transform: scale(1.05) !important;
+}
+
+.n-button--quaternary:active:not(.n-button--disabled) {
+  background-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  transform: scale(0.95) !important;
+}
+
+/* 快捷模板项 (sortable-item) 也应用凹陷效果 */
+.sortable-item {
+  transition: all 0.15s ease !important;
+}
+
+.sortable-item:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1) !important;
+}
+
+.sortable-item:active {
+  transform: translateY(1px) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 预定义选项 (predefined-options) 凹陷效果 */
+[data-guide="predefined-options"] .n-space > div > div {
+  transition: all 0.15s ease !important;
+}
+
+[data-guide="predefined-options"] .n-space > div > div:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-guide="predefined-options"] .n-space > div > div:active {
+  transform: translateY(1px) !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 自定义切换按钮和操作按钮的凹陷效果 (tobooks 风格 - 强化版) */
+.custom-recessed-button {
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+}
+
+.custom-recessed-button:hover:not(.is-active) {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 激活或按下状态：模拟白色凹陷进去的效果 */
+.custom-recessed-button:active,
+.custom-recessed-button.is-active {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  color: #000000 !important;
+  transform: translateY(1px) !important;
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.custom-recessed-button.is-active {
+  cursor: default;
+}
+
+/* 深色模式下的特殊处理，确保对比度 */
+.dark .custom-recessed-button.is-active {
+  background-color: #f0f0f0 !important;
+}
+
+/* 深色模式下 Header 按钮需要浅色背景，让黑色图标可见 */
+.dark .n-button--quaternary.n-button--circle {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(209, 213, 219, 0.95) !important;
+  color: #111827 !important;
+}
+
+.dark .n-button--quaternary.n-button--circle:hover:not(.n-button--disabled) {
+  background-color: rgba(255, 255, 255, 1) !important;
+  color: #111827 !important;
+}
+
+.dark .n-button--quaternary.n-button--circle .n-button__icon,
+.dark .n-button--quaternary.n-button--circle .n-base-icon,
+.dark .n-button--quaternary.n-button--circle [class*="i-carbon-"],
+[data-theme="dark"] .n-button--quaternary.n-button--circle .n-button__icon,
+[data-theme="dark"] .n-button--quaternary.n-button--circle .n-base-icon,
+[data-theme="dark"] .n-button--quaternary.n-button--circle [class*="i-carbon-"] {
+  color: #000000 !important;
+  background-color: #000000 !important;
+  opacity: 1 !important;
+}
+
+.dark .n-button--quaternary.n-button--circle svg,
+.dark .n-button--quaternary.n-button--circle svg *,
+[data-theme="dark"] .n-button--quaternary.n-button--circle svg,
+[data-theme="dark"] .n-button--quaternary.n-button--circle svg * {
+  fill: #000000 !important;
+  stroke: #000000 !important;
+}
+
+[data-theme="dark"] .n-button--quaternary.n-button--circle {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(209, 213, 219, 0.95) !important;
+  color: #111827 !important;
+}
+
+[data-theme="dark"] .n-button--quaternary.n-button--circle:hover:not(.n-button--disabled) {
+  background-color: rgba(255, 255, 255, 1) !important;
+  color: #111827 !important;
+}
+
+/* Mermaid 图表容器样式 */
+.mermaid-container {
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 0.5rem;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  overflow-x: auto;
+}
+
+.mermaid-container .mermaid {
+  display: flex;
+  justify-content: center;
+  background: transparent !important;
+  margin: 0;
+  padding: 0;
+}
+
+.mermaid-container .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 浅色主题下的 Mermaid 容器 */
+.light .mermaid-container,
+[data-theme="light"] .mermaid-container {
+  background-color: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.1);
+}

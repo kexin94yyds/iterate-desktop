@@ -1,0 +1,96 @@
+# Rust and Tauri build output
+target/
+src-tauri/target/
+
+# Node.js
+node_modules/
+dist/
+dist-test/
+build/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Generated and temporary output
+.cache/
+artifacts/
+cache/
+deliverables/
+gen/
+outputs/
+temp/
+tmp/
+*.tmp
+*.temp
+*.pid
+*.pid.lock
+*.seed
+*.log
+
+# Runtime state and private local knowledge
+.cunzhi-memory/
+.cunzhi-knowledge/
+.cunzhi/
+config.json
+
+# Local agent and editor state
+.antigravitycli/
+.claude/settings.local.json
+.codex/
+.cursor/
+.idea/
+.kiro/
+.vscode/
+.windsurf/
+*.swp
+*.swo
+*~
+
+# Credentials and signing material
+.env
+.env.*
+!.env.example
+*.cer
+*.crt
+*.key
+*.mobileprovision
+*.p12
+*.p8
+*.pem
+*.provisionprofile
+*.xcarchive/
+
+# Generated packages and installers
+*.app/
+*.dll
+*.dmg
+*.exe
+*.ipa
+*.tar.gz
+*.vsix
+*.zip
+
+# macOS, Windows, and Xcode user state
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+**/xcuserdata/
+*.xcuserstate
+.xcode-derived-data/
+.build/
+
+# Local deployment tools
+.netlify/
+qrcode-generator.html
+
+# Theos and platform caches
+jailbreak/**/.theos/
+jailbreak/**/packages/
+__pycache__/
+*.pyc
+*.pyo

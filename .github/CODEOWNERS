@@ -1,0 +1,9 @@
+* @kexin94yyds
+
+/.github/ @kexin94yyds
+/Cargo.toml @kexin94yyds
+/Cargo.lock @kexin94yyds
+/package.json @kexin94yyds
+/pnpm-lock.yaml @kexin94yyds
+/src/rust/bridge/ @kexin94yyds
+/src/rust/ui/updater.rs @kexin94yyds

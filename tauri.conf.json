@@ -1,0 +1,105 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "iterate",
+  "version": "0.6.2",
+  "identifier": "com.kexin94yyds.iterate",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "./dist",
+    "devUrl": "http://localhost:5176"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "title": "iterate",
+        "width": 600,
+        "height": 800,
+        "minWidth": 600,
+        "minHeight": 400,
+        "maxWidth": 600,
+        "maxHeight": 1200,
+        "center": true,
+        "visible": false,
+        "alwaysOnTop": true,
+        "decorations": true,
+        "hiddenTitle": true,
+        "transparent": false,
+        "skipTaskbar": false,
+        "resizable": true,
+        "fullscreen": false,
+        "visibleOnAllWorkspaces": true,
+        "backgroundThrottling": "throttle"
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self' asset: http://asset.localhost",
+        "script-src": "'self' blob:",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' asset: http://asset.localhost blob: data: https://api.qrserver.com",
+        "font-src": "'self' data:",
+        "connect-src": "'self' ipc: http://ipc.localhost http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* https://api.github.com",
+        "frame-src": "'self' blob: data:",
+        "media-src": "'self' blob: data: http://127.0.0.1:* http://localhost:*",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'"
+      },
+      "capabilities": [
+        {
+          "identifier": "main-capability",
+          "description": "Main window capabilities",
+          "windows": [
+            "main",
+            "speech-overlay"
+          ],
+          "permissions": [
+            "core:event:allow-listen",
+            "core:event:allow-unlisten",
+            "core:event:allow-emit",
+            "core:window:allow-show",
+            "core:window:allow-hide",
+            "core:window:allow-close",
+            "core:window:allow-minimize",
+            "core:window:allow-unminimize",
+            "core:window:allow-set-focus",
+            "core:window:allow-set-always-on-top",
+            "core:window:allow-set-title",
+            "core:window:allow-start-dragging",
+            "core:window:allow-available-monitors",
+            "core:window:allow-outer-position",
+            "core:window:allow-scale-factor",
+            "core:window:allow-set-position",
+            "core:window:allow-set-size",
+            "core:webview:allow-set-webview-focus",
+            "core:webview:allow-webview-position",
+            "core:webview:allow-webview-size",
+            "shell:allow-open",
+            "global-shortcut:allow-register",
+            "global-shortcut:allow-unregister",
+            "global-shortcut:allow-is-registered"
+          ]
+        }
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon-32.png",
+      "icons/icon-128.png",
+      "icons/icon-256.png",
+      "icons/icon-512.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ],
+    "macOS": {
+      "entitlements": "Entitlements.plist",
+      "infoPlist": "Info.plist",
+      "minimumSystemVersion": "10.15"
+    }
+  }
+}

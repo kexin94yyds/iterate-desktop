@@ -1,0 +1,174 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version type (patch=bugfix, minor=feature, major=breaking)'
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - custom
+      custom_version:
+        description: 'Custom version (format: x.y.z, only when custom is selected)'
+        required: false
+        type: string
+
+env:
+  RELEASE_AUTHORITY_REF: ${{ vars.RELEASE_AUTHORITY_REF }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Validate release authority ref
+        shell: bash
+        run: |
+          if [[ -z "$RELEASE_AUTHORITY_REF" ]]; then
+            echo "RELEASE_AUTHORITY_REF repository variable is required"
+            exit 1
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ env.RELEASE_AUTHORITY_REF }}
+          fetch-depth: 0
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get current version
+        id: current_version
+        run: |
+          # 优先从 Cargo.toml 获取版本（主要版本文件）
+          if [ -f "Cargo.toml" ]; then
+            VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d'"' -f2)
+          elif [ -f "version.json" ]; then
+            VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' version.json | cut -d'"' -f4)
+          elif [ -f "package.json" ]; then
+            VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' package.json | cut -d'"' -f4)
+          else
+            VERSION="0.0.0"
+          fi
+          echo "current=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+
+      - name: Calculate new version
+        id: new_version
+        run: |
+          CURRENT="${{ steps.current_version.outputs.current }}"
+          TYPE="${{ github.event.inputs.version_type }}"
+          CUSTOM="${{ github.event.inputs.custom_version }}"
+
+          # Parse current version
+          IFS='.' read -r major minor patch <<< "$CURRENT"
+
+          if [ "$TYPE" = "custom" ]; then
+            if [ -z "$CUSTOM" ]; then
+              echo "Error: Custom version is required when type is 'custom'"
+              exit 1
+            fi
+            NEW_VERSION="$CUSTOM"
+          else
+            case $TYPE in
+              "major")
+                major=$((major + 1))
+                minor=0
+                patch=0
+                ;;
+              "minor")
+                minor=$((minor + 1))
+                patch=0
+                ;;
+              "patch")
+                patch=$((patch + 1))
+                ;;
+            esac
+            NEW_VERSION="$major.$minor.$patch"
+          fi
+
+          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+
+      - name: Update version files
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new }}"
+          CURRENT_DATE=$(date +"%Y-%m-%d")
+
+          echo "Updating version to $NEW_VERSION..."
+
+          # Update Cargo.toml (主要版本文件)
+          if [ -f "Cargo.toml" ]; then
+            sed -i.bak "s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" Cargo.toml && rm Cargo.toml.bak
+            echo "Updated Cargo.toml"
+          fi
+
+          # Keep the root package entry in Cargo.lock aligned with Cargo.toml.
+          if [ -f "Cargo.lock" ]; then
+          NEW_VERSION="$NEW_VERSION" node - <<'NODE'
+          const fs = require('node:fs')
+          const path = 'Cargo.lock'
+          const source = fs.readFileSync(path, 'utf8')
+          const pattern = /(\[\[package\]\]\nname = "cunzhi"\nversion = ")[^"]+("\n)/
+          if (!pattern.test(source)) {
+            throw new Error('Unable to locate the cunzhi root package entry in Cargo.lock')
+          }
+          fs.writeFileSync(path, source.replace(pattern, `$1${process.env.NEW_VERSION}$2`))
+          NODE
+            echo "Updated Cargo.lock"
+          fi
+
+          # Update package.json
+          if [ -f "package.json" ]; then
+            sed -i.bak "s/\"version\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" package.json && rm package.json.bak
+            echo "Updated package.json"
+          fi
+
+          # Update tauri.conf.json
+          if [ -f "tauri.conf.json" ]; then
+            sed -i.bak "s/\"version\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" tauri.conf.json && rm tauri.conf.json.bak
+            echo "Updated tauri.conf.json"
+          fi
+
+          # Update version.json (如果存在)
+          if [ -f "version.json" ]; then
+            sed -i.bak "s/\"version\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" version.json && rm version.json.bak
+            sed -i.bak "s/\"build_date\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"build_date\": \"$CURRENT_DATE\"/" version.json && rm version.json.bak
+            echo "Updated version.json"
+          fi
+
+          # Keep the public README badge in the same release commit.
+          if [ -f "README.md" ]; then
+            sed -i.bak "s/version-[0-9][0-9.]*-blue/version-$NEW_VERSION-blue/" README.md && rm README.md.bak
+            echo "Updated README.md version badge"
+          fi
+
+      - name: Commit and create tag
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new }}"
+
+          # Commit version updates
+          git add .
+          git commit -m "release: Release $NEW_VERSION"
+
+          # Create tag
+          git tag -a "v$NEW_VERSION" -m "Release $NEW_VERSION"
+
+          # Push changes and tag
+          git push origin "HEAD:refs/heads/${RELEASE_AUTHORITY_REF}"
+          git push origin "v$NEW_VERSION"
+
+          echo "✅ Released version v$NEW_VERSION"
+          echo "🚀 GitHub Actions will automatically build and publish the release"

@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="iterate">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <title>iterate MCP 镜像</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root { --bg: #fff; --bg-secondary: #f9fafb; --bg-card: #f3f4f6; --text: #1f2937; --text-secondary: #6b7280; --border: #e5e7eb; --border-light: #d1d5db; --btn-active-bg: #000; --btn-active-text: #fff; --logo-color: #000; }
+        body.dark { --bg: #000; --bg-secondary: #111; --bg-card: #1a1a1a; --text: #fff; --text-secondary: #9ca3af; --border: #333; --border-light: #444; --btn-active-bg: #fff; --btn-active-text: #000; --logo-color: #fff; }
+
+        body { 
+            background-color: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            transition: background-color 0.3s, color 0.3s; 
+            touch-action: none; 
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .mcp-container { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
+        .header { background: var(--bg); border-bottom: 2px solid var(--border); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; z-index: 10; }
+        .logo-icon { color: var(--logo-color); font-weight: bold; font-size: 20px; }
+        .content { flex: 1; overflow-y: auto; padding: 16px; background: var(--bg); -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+        .footer { background: var(--bg-secondary); border-top: 2px solid var(--border); padding: 16px; flex-shrink: 0; z-index: 10; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+        .card { background: var(--bg-card); border-radius: 8px; padding: 16px; }
+        .btn-primary { background: var(--btn-active-bg); color: var(--btn-active-text); padding: 10px 16px; border-radius: 8px; font-weight: 600; border: 1px solid var(--btn-active-bg); }
+        .btn-secondary { background: var(--bg); color: var(--text); padding: 10px 16px; border-radius: 8px; font-weight: 500; border: 1px solid var(--border); }
+        .option-item { border: 1px solid var(--border); padding: 10px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; font-size: 14px; background: var(--bg-card); }
+        .option-selected { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        #status-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .status-online { background: #10b981; }
+        .status-offline { background: #ef4444; }
+        .status-warning { background: #f59e0b; }
+
+        .connection-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
+            flex-shrink: 0;
+        }
+        .connection-chip {
+            min-width: 0;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 8px;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .connection-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: #9ca3af;
+        }
+        .connection-dot.ok { background: #10b981; }
+        .connection-dot.warn { background: #f59e0b; }
+        .connection-dot.err { background: #ef4444; }
+        .connection-copy { min-width: 0; }
+        .connection-label {
+            font-size: 10px;
+            line-height: 1.1;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .connection-value {
+            font-size: 11px;
+            line-height: 1.2;
+            color: var(--text);
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        @media (max-width: 520px) {
+            .connection-strip { grid-template-columns: 1fr; }
+        }
+
+        .prompt-tag { background: var(--bg-card); border: 1px solid var(--border-light); padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; color: var(--text); }
+        .prompt-tag:hover { border-color: #3b82f6; }
+
+        .switch-container { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg-card); border-radius: 6px; border: 1px solid var(--border); transition: all 0.2s; }
+        .switch-container.is-active { border-color: var(--btn-active-bg); }
+        .switch-container.is-active span { color: var(--btn-active-bg); font-weight: 600; }
+        .switch-container span { color: var(--text-secondary); transition: all 0.2s; }
+        .switch { position: relative; display: inline-block; width: 34px; height: 20px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-light); transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: #fff; transition: .4s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        body.dark .slider:before { background-color: #000; }
+        input:checked + .slider { background-color: var(--btn-active-bg); }
+        input:checked + .slider:before { transform: translateX(14px); }
+
+        .action-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12px; font-weight: 500; color: var(--text); border: 1px solid var(--border); border-radius: 6px; background: var(--bg); cursor: pointer; transition: all 0.1s; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .action-btn:hover { border-color: var(--border-light); }
+        .action-btn.active { background: var(--btn-active-bg) !important; color: var(--btn-active-text) !important; border-color: var(--btn-active-bg) !important; }
+        .action-btn:active, .btn-primary:active, .btn-secondary:active, .theme-btn:active, .option-item:active, .prompt-tag:active { 
+            transform: translateY(2px) scale(0.98); 
+            box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.4) !important;
+            filter: brightness(0.8);
+        }
+
+        .theme-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); cursor: pointer; display: flex; align-items: center; justify-content: center; margin-right: 8px; transition: all 0.1s; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .btn-primary, .btn-secondary, .option-item, .prompt-tag { transition: all 0.1s; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+
+        .markdown-content { font-size: 14px; line-height: 1.6; color: var(--text); }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 { color: var(--text); font-weight: 600; margin-top: 16px; margin-bottom: 8px; }
+        .markdown-content h1 { font-size: 18px; }
+        .markdown-content h2 { font-size: 16px; }
+        .markdown-content h3 { font-size: 14px; }
+        .markdown-content p { margin: 8px 0; }
+        .markdown-content ul, .markdown-content ol { padding-left: 20px; margin: 8px 0; }
+        .markdown-content li { margin: 4px 0; }
+        .markdown-content code { background: var(--bg-card); padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: monospace; }
+        .markdown-content pre { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; margin: 12px 0; }
+        .markdown-content pre code { background: none; padding: 0; }
+        .markdown-content blockquote { border-left: 3px solid #3b82f6; padding-left: 12px; margin: 12px 0; color: var(--text-secondary); font-style: italic; }
+        .markdown-content strong { color: var(--text); font-weight: 600; }
+        .markdown-content a { color: #3b82f6; text-decoration: none; }
+
+        textarea { background: var(--bg-secondary) !important; border: 1px solid var(--border) !important; color: var(--text) !important; font-size: 16px !important; }
+        textarea::placeholder { color: var(--text-secondary); }
+
+        .image-previews { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+        .image-preview-item { position: relative; width: 60px; height: 60px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+        .image-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .image-preview-remove { position: absolute; top: 0; right: 0; background: rgba(0,0,0,0.5); color: #fff; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; }
+
+        /* 图片预览大图样式 */
+        .image-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+        }
+        .image-overlay img {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .image-overlay-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        /* 全局禁止图片拖拽，优化点击体验 */
+        img { user-select: none; -webkit-user-drag: none; }
+        .markdown-content img { cursor: zoom-in; max-width: 100%; border-radius: 8px; margin: 8px 0; }
+    </style>
+</head>
+<body>
+    <div class="mcp-container">
+        <div id="image-overlay" class="image-overlay" onclick="closeImageOverlay()">
+            <div class="image-overlay-close">&times;</div>
+            <img id="overlay-img" src="" alt="zoom">
+        </div>
+        <div class="header relative">
+            <div class="flex items-center gap-3">
+                <div class="logo-icon cursor-pointer" onclick="toggleWindowMenu()">∞</div>
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold truncate max-w-[150px]" id="currentProjectName"></span>
+                    <span id="mcpRequest" class="text-[10px] text-gray-500"></span>
+                </div>
+            </div>
+
+            <!-- 窗口切换菜单 -->
+            <div id="windowMenu" class="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-900 border-2 border-black rounded-lg shadow-xl z-50 overflow-hidden" style="display: none;">
+                <div class="p-2 border-b border-gray-200 dark:border-gray-800 text-[10px] font-bold text-gray-400 uppercase">活跃项目</div>
+                <div class="max-h-64 overflow-y-auto" id="windowList">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button id="notification-btn" class="theme-btn" onclick="toggleNotification()" title="开启通知">
+                    <svg id="notification-icon" class="w-4 h-4" fill="currentColor" viewBox="0 0 32 32"><path d="M28.707 19.293L26 16.586V13a10.014 10.014 0 0 0-9-9.95V1h-2v2.05A10.014 10.014 0 0 0 6 13v3.586l-2.707 2.707A1 1 0 0 0 3 20v3a1 1 0 0 0 1 1h7v.777a5.152 5.152 0 0 0 4.5 5.199A5.006 5.006 0 0 0 21 25v-1h7a1 1 0 0 0 1-1v-3a1 1 0 0 0-.293-.707zM19 25a3 3 0 0 1-6 0v-1h6zm8-3H5v-1.586l2.707-2.707A1 1 0 0 0 8 17v-4a8 8 0 0 1 16 0v4a1 1 0 0 0 .293.707L27 20.414z"/></svg>
+                </button>
+                <button class="theme-btn" onclick="toggleTheme()" title="切换主题">
+                    <svg id="theme-icon" class="w-4 h-4" fill="currentColor" viewBox="0 0 32 32"><path d="M13.502 5.414a15.075 15.075 0 0 0 11.594 18.194 11.113 11.113 0 0 1-7.975 3.39c-.138 0-.278.005-.418 0a11.094 11.094 0 0 1-3.2-21.584M14.98 3a1.002 1.002 0 0 0-.175.016 13.096 13.096 0 0 0 1.825 25.981c.164.006.328 0 .49 0a13.072 13.072 0 0 0 10.703-5.555 1.01 1.01 0 0 0-.783-1.565A13.08 13.08 0 0 1 15.89 4.38 1.015 1.015 0 0 0 14.98 3z"/></svg>
+                </button>
+                <div id="status-indicator" class="status-offline"></div>
+                <span id="conn-text" class="text-xs" style="color:var(--text-secondary)">正在连接</span>
+            </div>
+        </div>
+
+        <div class="connection-strip" aria-label="连接状态">
+            <div class="connection-chip">
+                <span id="local-origin-dot" class="connection-dot warn"></span>
+                <div class="connection-copy">
+                    <div class="connection-label">本地 8080</div>
+                    <div id="local-origin-text" class="connection-value">检查中</div>
+                </div>
+            </div>
+            <div class="connection-chip">
+                <span id="public-tunnel-dot" class="connection-dot warn"></span>
+                <div class="connection-copy">
+                    <div class="connection-label">公网入口</div>
+                    <div id="public-tunnel-text" class="connection-value">检查中</div>
+                </div>
+            </div>
+            <div class="connection-chip">
+                <span id="websocket-dot" class="connection-dot warn"></span>
+                <div class="connection-copy">
+                    <div class="connection-label">WebSocket</div>
+                    <div id="websocket-text" class="connection-value">正在连接</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content" id="mcp-content">
+            <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                <p>等待 MCP 窗口指令...</p>
+                <button onclick="requestSync()" class="mt-4 text-xs text-blue-400 underline">手动请求同步</button>
+            </div>
+        </div>
+
+        <div class="footer hidden" id="mcp-footer">
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <button id="btn-continue" onclick="sendAction('continue')" class="btn-secondary text-xs py-2">继续</button>
+                <button id="btn-enhance" onclick="sendAction('enhance')" class="btn-secondary text-xs py-2">✨ 增强</button>
+            </div>
+            <div class="mb-3">
+                <button id="btn-loop-start" onclick="sendAction('loop_start')" class="btn-secondary w-full text-xs py-2">接管</button>
+            </div>
+            <div class="flex justify-between items-center gap-3">
+                <button id="btn-cancel" onclick="sendAction('cancel')" class="btn-secondary flex-1">取消</button>
+                <button id="btn-submit" onclick="sendAction('submit')" class="btn-primary flex-1">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let currentRequest = null;
+        let activeProjectPath = null;
+        let selectedOptions = [];
+        let uploadedImages = []; // 存储 {data: base64, media_type: string, filename: string}
+        let customPrompts = null;
+        let sendTarget = 'ide';
+        const enableContextAppend = false;
+        let reconnectAttempt = 0;
+        let reconnectTimer = null;
+        let healthTimer = null;
+        let isConnecting = false;
+        const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const WS_ADDR = WS_PROTOCOL + '//' + window.location.host + '/ws';
+        const RECONNECT_DELAYS = [3000, 5000, 10000, 20000, 30000];
+
+        function renderMarkdown(text) {
+            if (!text) return '';
+            try {
+                let html = marked.parse(text.replace(/\\n/g, '\n'));
+                // 后备：如果 marked 未渲染图片语法，手动转换
+                html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:8px;margin:8px 0">');
+                return html;
+            } catch (e) {
+                return text.replace(/\n/g, '<br>');
+            }
+        }
+
+        function setMainConnectionState(level, text) {
+            const indicator = document.getElementById('status-indicator');
+            const label = document.getElementById('conn-text');
+            if (indicator) {
+                indicator.className = level === 'ok'
+                    ? 'status-online'
+                    : level === 'warn'
+                        ? 'status-warning'
+                        : 'status-offline';
+            }
+            if (label) label.textContent = text;
+        }
+
+        function updateConnectionChip(id, level, text) {
+            const dot = document.getElementById(`${id}-dot`);
+            const label = document.getElementById(`${id}-text`);
+            if (dot) dot.className = `connection-dot ${level}`;
+            if (label) label.textContent = text;
+        }
+
+        function formatProbe(probe, okText) {
+            if (!probe) return okText;
+            const status = probe.status_code ? `HTTP ${probe.status_code}` : '';
+            const latency = Number.isFinite(Number(probe.latency_ms)) ? `${probe.latency_ms}ms` : '';
+            return [okText, status, latency].filter(Boolean).join(' · ');
+        }
+
+        async function refreshConnectionHealth() {
+            try {
+                const res = await fetch('/api/bridge/health', { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const localHealthy = !!(data?.local_origin?.healthy ?? data?.local_origin?.probe?.healthy);
+                const publicHealthy = !!(data?.public_tunnel?.healthy ?? data?.public_tunnel?.probe?.healthy);
+                const localProbe = data?.local_origin?.probe || data?.local_origin;
+                const publicProbe = data?.public_tunnel?.probe || data?.public_tunnel;
+
+                updateConnectionChip(
+                    'local-origin',
+                    localHealthy ? 'ok' : 'err',
+                    localHealthy ? formatProbe(localProbe, '正常') : '不可达'
+                );
+                updateConnectionChip(
+                    'public-tunnel',
+                    publicHealthy ? 'ok' : (localHealthy ? 'warn' : 'err'),
+                    publicHealthy ? formatProbe(publicProbe, '正常') : (localHealthy ? '公网重连中' : '本地异常')
+                );
+            } catch (e) {
+                updateConnectionChip('local-origin', 'warn', '未知');
+                updateConnectionChip('public-tunnel', 'warn', '公网入口不可达');
+            }
+        }
+
+        function startHealthPolling() {
+            refreshConnectionHealth();
+            if (healthTimer) clearInterval(healthTimer);
+            healthTimer = setInterval(refreshConnectionHealth, 10000);
+        }
+
+        function setWebSocketChip(level, text) {
+            updateConnectionChip('websocket', level, text);
+        }
+
+        function scheduleReconnect() {
+            if (reconnectTimer) return;
+            const delay = RECONNECT_DELAYS[Math.min(reconnectAttempt, RECONNECT_DELAYS.length - 1)];
+            reconnectAttempt += 1;
+            setWebSocketChip('warn', `重连中 ${Math.round(delay / 1000)}s`);
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                connect();
+            }, delay);
+        }
+
+        function setSendTarget(target) {
+            sendTarget = target;
+            if (currentRequest) {
+                renderState({ showMcpPopup: true, request: currentRequest });
+            }
+        }
+
+        function copyMessage() {
+            if (currentRequest?.message) {
+                navigator.clipboard.writeText(currentRequest.message).then(() => {
+                    alert('已复制到剪贴板');
+                });
+            }
+        }
+
+        function quoteMessage() {
+            if (currentRequest?.message) {
+                const textarea = document.getElementById('user-input');
+                if (textarea) {
+                    textarea.value = currentRequest.message;
+                    textarea.focus();
+                }
+            }
+        }
+
+        // 通知功能
+        let notificationEnabled = false;
+        let swRegistration = null;
+        let vapidPublicKey = null;
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        async function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) return null;
+            if (swRegistration) return swRegistration;
+            try {
+                swRegistration = await navigator.serviceWorker.register('/sw.js');
+                await navigator.serviceWorker.ready;
+                return swRegistration;
+            } catch (e) {
+                console.warn('Service Worker 注册失败:', e);
+                return null;
+            }
+        }
+
+        async function fetchVapidKey() {
+            if (vapidPublicKey) return vapidPublicKey;
+            try {
+                const res = await fetch('/push/vapid_public_key');
+                if (!res.ok) return null;
+                const data = await res.json();
+                vapidPublicKey = data?.public_key || null;
+                return vapidPublicKey;
+            } catch (e) {
+                console.warn('获取 VAPID 公钥失败:', e);
+                return null;
+            }
+        }
+
+        async function ensurePushSubscription() {
+            const reg = await registerServiceWorker();
+            if (!reg || !('PushManager' in window)) return null;
+
+            const key = await fetchVapidKey();
+            if (!key) {
+                alert('未配置 VAPID 公钥，无法订阅推送');
+                return null;
+            }
+
+            let subscription = await reg.pushManager.getSubscription();
+            if (!subscription) {
+                const appServerKey = urlBase64ToUint8Array(key);
+                subscription = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: appServerKey
+                });
+            }
+
+            await fetch('/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(subscription)
+            });
+
+            return subscription;
+        }
+
+        async function unsubscribePush() {
+            const reg = await registerServiceWorker();
+            if (!reg) return;
+            const subscription = await reg.pushManager.getSubscription();
+            if (!subscription) return;
+            const endpoint = subscription.endpoint;
+            await subscription.unsubscribe();
+            try {
+                await fetch('/push/unsubscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint })
+                });
+            } catch (e) {
+                console.warn('取消订阅失败:', e);
+            }
+        }
+
+        function toggleNotification() {
+            if (!('Notification' in window)) {
+                alert('您的浏览器不支持通知功能');
+                return;
+            }
+
+            if (notificationEnabled) {
+                // 关闭通知
+                notificationEnabled = false;
+                localStorage.setItem('iterate-notification-enabled', 'false');
+                updateNotificationIcon();
+                stopSilentAudio();
+                unsubscribePush();
+                return;
+            }
+
+            // 开启通知 - 先请求权限
+            if (Notification.permission === 'granted') {
+                enablePushNotifications();
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        enablePushNotifications();
+                    } else {
+                        alert('请在浏览器设置中允许通知权限');
+                    }
+                });
+            } else {
+                alert('通知权限已被拒绝，请在浏览器设置中允许');
+            }
+        }
+
+        async function enablePushNotifications() {
+            try {
+                await ensurePushSubscription();
+                notificationEnabled = true;
+                localStorage.setItem('iterate-notification-enabled', 'true');
+                updateNotificationIcon();
+                startSilentAudio();
+                sendTestNotification();
+            } catch (e) {
+                console.warn('启用推送失败:', e);
+                alert('启用推送失败，请检查网络或 VAPID 配置');
+            }
+        }
+
+        async function sendTestNotification() {
+            const reg = await registerServiceWorker();
+            if (reg && Notification.permission === 'granted') {
+                reg.showNotification('iterate 通知已开启', {
+                    body: '当有新消息时会通知您',
+                    icon: '/apple-touch-icon.png',
+                    tag: 'iterate-mcp'
+                });
+                return;
+            }
+            new Notification('iterate 通知已开启', {
+                body: '当有新消息时会通知您',
+                icon: '/apple-touch-icon.png'
+            });
+        }
+
+        function sendNotificationIfEnabled(title, body) {
+            if (!notificationEnabled) return;
+            if (Notification.permission !== 'granted') return;
+            try {
+                if (swRegistration) {
+                    swRegistration.showNotification(title, {
+                        body: body,
+                        icon: '/apple-touch-icon.png',
+                        tag: 'iterate-mcp'
+                    });
+                } else {
+                    new Notification(title, {
+                        body: body,
+                        icon: '/apple-touch-icon.png',
+                        tag: 'iterate-mcp'
+                    });
+                }
+            } catch (e) {
+                console.warn('发送通知失败:', e);
+            }
+        }
+
+        function updateNotificationIcon() {
+            const btn = document.getElementById('notification-btn');
+            const icon = document.getElementById('notification-icon');
+            if (notificationEnabled) {
+                btn.title = '关闭通知';
+                btn.style.background = 'var(--btn-active-bg)';
+                btn.style.color = 'var(--btn-active-text)';
+                icon.innerHTML = '<path d="M28.707 19.293L26 16.586V13a10.014 10.014 0 0 0-9-9.95V1h-2v2.05A10.014 10.014 0 0 0 6 13v3.586l-2.707 2.707A1 1 0 0 0 3 20v3a1 1 0 0 0 1 1h7v.777a5.152 5.152 0 0 0 4.5 5.199A5.006 5.006 0 0 0 21 25v-1h7a1 1 0 0 0 1-1v-3a1 1 0 0 0-.293-.707zM19 25a3 3 0 0 1-6 0v-1h6zm8-3H5v-1.586l2.707-2.707A1 1 0 0 0 8 17v-4a8 8 0 0 1 16 0v4a1 1 0 0 0 .293.707L27 20.414z"/>';
+            } else {
+                btn.title = '开启通知';
+                btn.style.background = 'var(--bg-card)';
+                btn.style.color = 'var(--text)';
+                icon.innerHTML = '<path d="M28.707 19.293L26 16.586V13a10.014 10.014 0 0 0-9-9.95V1h-2v2.05A10.014 10.014 0 0 0 6 13v3.586l-2.707 2.707A1 1 0 0 0 3 20v3a1 1 0 0 0 1 1h7v.777a5.152 5.152 0 0 0 4.5 5.199A5.006 5.006 0 0 0 21 25v-1h7a1 1 0 0 0 1-1v-3a1 1 0 0 0-.293-.707zM19 25a3 3 0 0 1-6 0v-1h6zm8-3H5v-1.586l2.707-2.707A1 1 0 0 0 8 17v-4a8 8 0 0 1 16 0v4a1 1 0 0 0 .293.707L27 20.414z"/>';
+            }
+        }
+
+        // 静音音频保持后台活跃（iOS Safari 需要）
+        let silentAudioContext = null;
+        let silentAudioSource = null;
+
+        function startSilentAudio() {
+            if (silentAudioContext) return;
+            try {
+                silentAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                // 创建一个静音的振荡器
+                silentAudioSource = silentAudioContext.createOscillator();
+                const gainNode = silentAudioContext.createGain();
+                gainNode.gain.value = 0.001; // 几乎静音
+                silentAudioSource.connect(gainNode);
+                gainNode.connect(silentAudioContext.destination);
+                silentAudioSource.start();
+                console.log('静音音频已启动，保持后台活跃');
+            } catch (e) {
+                console.warn('启动静音音频失败:', e);
+            }
+        }
+
+        function stopSilentAudio() {
+            if (silentAudioSource) {
+                silentAudioSource.stop();
+                silentAudioSource = null;
+            }
+            if (silentAudioContext) {
+                silentAudioContext.close();
+                silentAudioContext = null;
+            }
+            console.log('静音音频已停止');
+        }
+
+        function initNotification() {
+            registerServiceWorker();
+            const saved = localStorage.getItem('iterate-notification-enabled');
+            if (saved === 'true' && 'Notification' in window && Notification.permission === 'granted') {
+                notificationEnabled = true;
+                // 开启通知时自动启动静音音频保持后台活跃
+                startSilentAudio();
+                ensurePushSubscription();
+            }
+            updateNotificationIcon();
+        }
+
+        function toggleTheme() {
+            const isDark = document.body.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const isDark = document.body.classList.contains('dark');
+            const icon = document.getElementById('theme-icon');
+            if (isDark) {
+                icon.innerHTML = '<path d="M13.502 5.414a15.075 15.075 0 0 0 11.594 18.194 11.113 11.113 0 0 1-7.975 3.39c-.138 0-.278.005-.418 0a11.094 11.094 0 0 1-3.2-21.584M14.98 3a1.002 1.002 0 0 0-.175.016 13.096 13.096 0 0 0 1.825 25.981c.164.006.328 0 .49 0a13.072 13.072 0 0 0 10.703-5.555 1.01 1.01 0 0 0-.783-1.565A13.08 13.08 0 0 1 15.89 4.38 1.015 1.015 0 0 0 14.98 3z"/>';
+            } else {
+                icon.innerHTML = '<path d="M16 12.005a4 4 0 1 1-4 4 4.005 4.005 0 0 1 4-4m0-2a6 6 0 1 0 6 6 6 6 0 0 0-6-6zM5.394 6.813l1.414-1.414 3.506 3.506-1.414 1.414zm21.212-1.414l1.414 1.414-3.506 3.506-1.414-1.414zM16 0h2v4.005h-2zm0 27.995h2V32h-2zM4.005 14h4.005v2H4.005zM24 14h4.005v2H24zM5.394 25.187l3.506-3.506 1.414 1.414-3.506 3.506zm20.212 1.414l-3.506-3.506 1.414-1.414 3.506 3.506z"/>';
+            }
+        }
+
+        (function initTheme() {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'dark') {
+                document.body.classList.add('dark');
+            }
+            updateThemeIcon();
+            initNotification();
+        })();
+
+        // 禁止缩放的辅助函数
+        function disableZoom() {
+            // 1. 阻止双指缩放手势 (iOS Safari 专用)
+            document.addEventListener('gesturestart', function(e) {
+                e.preventDefault();
+            }, { passive: false });
+
+            document.addEventListener('gesturechange', function(e) {
+                e.preventDefault();
+            }, { passive: false });
+
+            document.addEventListener('gestureend', function(e) {
+                e.preventDefault();
+            }, { passive: false });
+
+            // 2. 阻止双击缩放
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = (new Date()).getTime();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+
+            // 3. 阻止多点触控缩放 (双指捏合)
+            document.addEventListener('touchstart', function(event) {
+                if (event.touches.length > 1) {
+                    event.preventDefault();
+                }
+            }, { passive: false });
+
+            // 4. 阻止通过 Ctrl + +/- 或滚轮缩放 (针对混合环境)
+            document.addEventListener('wheel', function(event) {
+                if (event.ctrlKey) {
+                    event.preventDefault();
+                }
+            }, { passive: false });
+
+            document.addEventListener('keydown', function(event) {
+                if (event.ctrlKey && (event.key === '=' || event.key === '-' || event.key === '0')) {
+                    event.preventDefault();
+                }
+            });
+        }
+
+        disableZoom();
+
+        function toggleWindowMenu() {
+            const menu = document.getElementById('windowMenu');
+            if (menu.style.display === 'none') {
+                menu.style.display = 'block';
+                fetchWindows();
+            } else {
+                menu.style.display = 'none';
+            }
+        }
+
+        async function fetchWindows() {
+            try {
+                const res = await fetch('/windows');
+                const data = await res.json();
+                const list = document.getElementById('windowList');
+                const currentPath = currentRequest?.project_path;
+                
+                list.innerHTML = (data.instances || []).map(win => {
+                    const isCurrent = currentPath === win.project_path;
+                    return `
+                    <div onclick="switchWindow('${win.project_path}')" class="px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800 last:border-0 ${isCurrent ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm font-medium truncate ${isCurrent ? 'text-blue-600 dark:text-blue-400' : ''}">${win.project_path.split('/').pop()}</div>
+                            ${isCurrent ? '<div class="w-1.5 h-1.5 rounded-full bg-black border border-gray-300 dark:border-gray-100"></div>' : ''}
+                        </div>
+                        <div class="text-[10px] text-gray-500 truncate">${win.project_path}</div>
+                    </div>
+                `}).join('') || '<div class="p-4 text-center text-gray-400 text-sm">暂无活跃项目</div>';
+            } catch (e) {
+                console.error('获取窗口列表失败:', e);
+            }
+        }
+
+        function switchWindow(projectPath) {
+            // 立即更新 UI 标题，给用户反馈
+            const projectNameSpan = document.getElementById('currentProjectName');
+            if (projectNameSpan) {
+                projectNameSpan.textContent = projectPath.split('/').pop() || projectPath;
+            }
+
+            activeProjectPath = projectPath;
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    message_type: 'request_sync',
+                    payload: { project_path: projectPath }
+                }));
+            }
+            document.getElementById('windowMenu').style.display = 'none';
+        }
+
+        function connect() {
+            if (isConnecting || (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING))) {
+                return;
+            }
+            isConnecting = true;
+            setMainConnectionState('warn', reconnectAttempt > 0 ? '公网通道重连中' : '正在连接');
+            setWebSocketChip('warn', reconnectAttempt > 0 ? '重连中' : '正在连接');
+            ws = new WebSocket(WS_ADDR);
+            ws.onopen = () => {
+                isConnecting = false;
+                reconnectAttempt = 0;
+                if (reconnectTimer) {
+                    clearTimeout(reconnectTimer);
+                    reconnectTimer = null;
+                }
+                setMainConnectionState('ok', '已连接');
+                setWebSocketChip('ok', '已连接');
+                refreshConnectionHealth();
+                requestSync();
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.message_type === 'mcp_state') {
+                        if (msg.payload.customPrompts) customPrompts = msg.payload.customPrompts;
+                        renderState(msg.payload);
+                        // 发送系统通知
+                        const message = msg.payload?.request?.message;
+                        if (message) {
+                            sendNotificationIfEnabled('iterate', message.substring(0, 100));
+                        }
+                    }
+                } catch (e) {
+                    console.error('解析消息失败', e);
+                }
+            };
+
+            ws.onerror = () => {
+                isConnecting = false;
+                setMainConnectionState('warn', '公网通道重连中');
+                setWebSocketChip('warn', '连接异常');
+                refreshConnectionHealth();
+            };
+
+            ws.onclose = () => {
+                isConnecting = false;
+                setMainConnectionState('warn', '公网通道重连中');
+                refreshConnectionHealth();
+                scheduleReconnect();
+            };
+        }
+
+        function requestSync() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const projectPath = activeProjectPath || currentRequest?.project_path || null;
+                ws.send(JSON.stringify({
+                    message_type: 'request_sync',
+                    payload: projectPath ? { project_path: projectPath } : {}
+                }));
+            }
+        }
+
+        function pickFirstString(source, keys) {
+            if (!source) return null;
+            for (const key of keys) {
+                const value = source[key];
+                if (typeof value === 'string' && value.trim()) {
+                    return value.trim();
+                }
+            }
+            return null;
+        }
+
+        function currentRouteContext() {
+            const requestId = pickFirstString(currentRequest, ['id', 'request_id', 'requestId']);
+            const timelineRouteId = pickFirstString(currentRequest, [
+                'timeline_route_id',
+                'timelineRouteId',
+                'conversation_route_id',
+                'conversationRouteId',
+                'codex_thread_id',
+                'codexThreadId',
+                'conversation_id',
+                'conversationId'
+            ]) || requestId;
+            const projectPath = activeProjectPath || currentRequest?.project_path || null;
+
+            return {
+                project_path: projectPath,
+                request_id: requestId,
+                timeline_route_id: timelineRouteId,
+                conversation_route_id: timelineRouteId
+            };
+        }
+
+        function sendAction(action) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                // 即时反馈：禁用所有按钮并半透明
+                const footer = document.getElementById('mcp-footer');
+                if (footer) {
+                    const buttons = footer.querySelectorAll('button');
+                    buttons.forEach(btn => {
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        btn.style.pointerEvents = 'none';
+                    });
+                }
+
+                // 获取用户输入
+                let userInput = document.getElementById('user-input')?.value || '';
+                
+                if (action === 'submit' && enableContextAppend) {
+                    const conditionalContent = generateConditionalContent();
+                    userInput = userInput + conditionalContent;
+                }
+
+                const payload = {
+                    action: action,
+                    user_input: userInput,
+                    selected_options: selectedOptions,
+                    images: uploadedImages, // 发送图片数据
+                    ...currentRouteContext()
+                };
+                ws.send(JSON.stringify({ message_type: 'mcp_action', payload: payload }));
+                
+                // 发送后清空图片（如果不是更新条件状态）
+                if (action !== 'update_conditional_state') {
+                    uploadedImages = [];
+                }
+            }
+        }
+
+        function handlePaste(event) {
+            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+            let imageCount = 0;
+
+            for (const item of items) {
+                if (item.type.indexOf("image") !== -1) {
+                    imageCount++;
+                    const blob = item.getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const base64Data = e.target.result;
+                        const mediaType = item.type;
+                        const filename = blob.name || `pasted_image_${Date.now()}`;
+                        
+                        // 避免重复
+                        if (!uploadedImages.find(img => img.data === base64Data)) {
+                            uploadedImages.push({
+                                data: base64Data,
+                                media_type: mediaType,
+                                filename: filename
+                            });
+                            renderImagePreviews();
+                        }
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+            
+            // 如果存在图片，通常我们会阻止默认行为以防止在输入框中粘贴奇怪的内容
+            // 如果您希望同时保留文字粘贴，可以更细致地判断
+            if (imageCount > 0) {
+                // 如果您发现粘贴图片时文字也丢了，可以去掉下面这一行
+                // event.preventDefault(); 
+            }
+        }
+
+        function renderImagePreviews() {
+            const container = document.getElementById('image-previews');
+            if (!container) return;
+            
+            container.innerHTML = uploadedImages.map((img, index) => `
+                <div class="image-preview-item" onclick="openImageOverlay('${img.data}')">
+                    <img src="${img.data}" alt="preview">
+                    <div class="image-preview-remove" onclick="event.stopPropagation(); removeImage(${index})">×</div>
+                </div>
+            `).join('');
+        }
+
+        function removeImage(index) {
+            uploadedImages.splice(index, 1);
+            renderImagePreviews();
+        }
+
+        let fileListVisible = false;
+        let projectFiles = [];
+        
+        async function showProjectFiles() {
+            const projectPath = currentRequest?.project_path || '';
+            if (!projectPath) {
+                alert('无法获取项目路径');
+                return;
+            }
+            
+            // 如果文件列表已显示，则隐藏
+            const existingList = document.getElementById('file-list-modal');
+            if (existingList) {
+                existingList.remove();
+                fileListVisible = false;
+                return;
+            }
+            
+            // 获取文件列表（使用相对路径，支持手机端通过 Cloudflare Tunnel 访问）
+            try {
+                const res = await fetch(`/files?project_path=${encodeURIComponent(projectPath)}`);
+                const data = await res.json();
+                projectFiles = data.files || [];
+                
+                if (projectFiles.length === 0) {
+                    alert('未找到文件');
+                    return;
+                }
+                
+                // 显示文件列表弹窗
+                showFileListModal(projectFiles, projectPath);
+            } catch (e) {
+                alert('获取文件列表失败: ' + e.message);
+            }
+        }
+        
+        function showFileListModal(files, projectPath) {
+            fileListVisible = true;
+            const modal = document.createElement('div');
+            modal.id = 'file-list-modal';
+            modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;flex-direction:column;';
+            
+            modal.innerHTML = `
+                <div style="background:var(--bg);padding:16px;padding-top:calc(16px + env(safe-area-inset-top));border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:600;">选择文件</span>
+                    <button onclick="document.getElementById('file-list-modal').remove()" style="background:none;border:none;color:var(--text);font-size:28px;cursor:pointer;padding:8px;min-width:44px;min-height:44px;">×</button>
+                </div>
+                <div style="padding:8px;background:var(--bg-secondary);">
+                    <input type="text" id="file-search" placeholder="搜索文件..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:14px;" oninput="filterFiles(this.value)">
+                </div>
+                <div id="file-list" style="flex:1;overflow-y:auto;background:var(--bg);">
+                    ${files.map(f => `<div class="file-item" onclick="selectFile('${f.replace(/'/g, "\\'")}')" style="padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;color:var(--text);">${f.endsWith('/') ? '📁 ' : '📄 '}${f}</div>`).join('')}
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+        
+        function filterFiles(query) {
+            const list = document.getElementById('file-list');
+            if (!list) return;
+            const q = query.toLowerCase();
+            const filtered = projectFiles.filter(f => f.toLowerCase().includes(q));
+            list.innerHTML = filtered.map(f => `<div class="file-item" onclick="selectFile('${f.replace(/'/g, "\\'")}')" style="padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;color:var(--text);">${f.endsWith('/') ? '📁 ' : '📄 '}${f}</div>`).join('');
+        }
+        
+        function selectFile(file) {
+            const textarea = document.getElementById('user-input');
+            if (textarea) {
+                const currentText = textarea.value;
+                const fileRef = `@${file}`;
+                textarea.value = currentText + (currentText && !currentText.endsWith(' ') ? ' ' : '') + fileRef;
+            }
+            document.getElementById('file-list-modal')?.remove();
+            fileListVisible = false;
+        }
+
+        function closeImageOverlay() {
+            const overlay = document.getElementById('image-overlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        function openImageOverlay(src) {
+            const overlay = document.getElementById('image-overlay');
+            const img = document.getElementById('overlay-img');
+            if (overlay && img) {
+                img.src = src;
+                overlay.style.display = 'flex';
+            }
+        }
+
+        // 全局点击事件，用于监听 Markdown 渲染出的图片
+        document.addEventListener('click', (e) => {
+            if (e.target.tagName === 'IMG' && e.target.closest('.markdown-content')) {
+                openImageOverlay(e.target.src);
+            }
+        });
+
+        function renderState(state) {
+            const content = document.getElementById('mcp-content');
+            const footer = document.getElementById('mcp-footer');
+            const projectNameSpan = document.getElementById('currentProjectName');
+
+            if (!state.showMcpPopup || !state.request) {
+                // 没有待处理请求：清空当前请求并隐藏按钮，避免 UI 永久停留在“已发送/不可点击”状态
+                currentRequest = null;
+                content.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-500">
+                    <p>当前没有待处理的 MCP 请求</p>
+                    <button onclick="requestSync()" class="mt-4 text-xs text-blue-400 underline">重新尝试同步</button>
+                </div>`;
+                footer.classList.add('hidden');
+                projectNameSpan.textContent = activeProjectPath
+                    ? (activeProjectPath.split('/').pop() || activeProjectPath)
+                    : '等待中';
+                selectedOptions = [];
+                return;
+            }
+
+            const req = state.request;
+            currentRequest = req;
+            const projectPath = req.project_path || '未知项目';
+            projectNameSpan.textContent = projectPath.split('/').pop() || projectPath;
+            activeProjectPath = req.project_path || activeProjectPath;
+            const mcpRequestSpan = document.getElementById('mcpRequest');
+            if (mcpRequestSpan) mcpRequestSpan.textContent = '正在等待指令';
+
+            // 恢复按钮状态
+            footer.classList.remove('hidden');
+            const buttons = footer.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+            });
+
+            let html = `
+                <div class="card" style="border: 1px solid rgba(59,130,246,0.3);">
+                    <div class="markdown-content">${renderMarkdown(req.message)}</div>
+                </div>
+
+                <!-- 操作按钮区域 - 和电脑端一样 -->
+                <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-600/30">
+                    <div class="flex rounded-md overflow-hidden border border-gray-500/30" style="background:#1a1a1a;">
+                        <div class="action-btn active" onclick="setSendTarget('ide')">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 32 32"><path d="M21.28 4.28l-10 10a1 1 0 0 0 0 1.41l10 10a1 1 0 0 0 1.41-1.41L13.42 15l9.3-9.28a1 1 0 0 0-1.41-1.41z"/></svg>
+                            IDE
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="action-btn" onclick="showProjectFiles()">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 32 32"><path d="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2zm6 15h-5v5h-2v-5H10v-2h5V10h2v5h5z"/></svg>
+                            @文件
+                        </div>
+                        <div class="action-btn" onclick="copyMessage()">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 32 32"><path d="M28 10v18H10V10h18m0-2H10a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2z"/><path d="M4 18H2V4a2 2 0 0 1 2-2h14v2H4z"/></svg>
+                            复制原文
+                        </div>
+                        <div class="action-btn" onclick="quoteMessage()">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 32 32"><path d="M12 15H6.11A9 9 0 0 1 10 8.86l1.79-1.2L10.69 6 8.9 7.2A11 11 0 0 0 4 16.35V23a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2z"/><path d="M26 15h-5.89A9 9 0 0 1 24 8.86l1.79-1.2L24.7 6l-1.8 1.2a11 11 0 0 0-4.9 9.15V23a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2z"/></svg>
+                            引用原文
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 输入框 -->
+                <div class="mt-4">
+                    <div id="image-previews" class="image-previews"></div>
+                    <textarea id="user-input" class="w-full" style="background:#111;border:1px solid #333;border-radius:8px;padding:12px;color:#fff;font-size:14px;outline:none;resize:none;" rows="4" placeholder="请输入您的回复... (支持粘贴图片)" onpaste="handlePaste(event)"></textarea>
+                </div>
+            `;
+
+            if (req.predefined_options && req.predefined_options.length > 0) {
+                html += '<div class="mt-4 mb-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest opacity-70">预定义选项</div>';
+                html += '<div class="grid grid-cols-1 gap-2">';
+                req.predefined_options.forEach(opt => {
+                    const isSelected = selectedOptions.includes(opt);
+                    html += `<div class="option-item ${isSelected ? 'option-selected' : ''}" onclick="toggleOption('${opt.replace(/'/g, "\\'")}')">${opt}</div>`;
+                });
+                html += '</div>';
+            }
+
+            html += renderExtraFeaturesHTML();
+
+            content.innerHTML = html;
+            footer.classList.remove('hidden');
+        }
+
+        function toggleOption(opt) {
+            const index = selectedOptions.indexOf(opt);
+            if (index > -1) {
+                selectedOptions.splice(index, 1);
+            } else {
+                selectedOptions.push(opt);
+            }
+            renderState({ showMcpPopup: true, request: currentRequest });
+        }
+
+        function renderExtraFeaturesHTML() {
+            if (!customPrompts || !customPrompts.prompts) return '';
+            
+            const normals = customPrompts.prompts.filter(p => p.type === 'normal' || !p.type);
+            const conditionals = customPrompts.prompts.filter(p => p.type === 'conditional');
+            
+            let html = '';
+            
+            if (normals.length > 0) {
+                html += `
+                    <div class="mt-6">
+                        <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest opacity-70 mb-2">快捷模板</div>
+                        <div class="flex flex-wrap gap-2">
+                            ${normals.map(p => 
+                                `<div class="prompt-tag" onclick="applyTemplate('${p.content.replace(/'/g, "\\'").replace(/\n/g, "\\n")}')">${p.name}</div>`
+                            ).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (enableContextAppend && conditionals.length > 0) {
+                html += `
+                    <div class="mt-4">
+                        <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest opacity-70 mb-2">上下文追加</div>
+                        <div class="space-y-1">
+                            ${conditionals.map(p => `
+                                <div id="container-${p.id}" class="switch-container ${p.current_state ? 'is-active' : ''}">
+                                    <span class="text-xs">${p.name}</span>
+                                    <label class="switch">
+                                        <input type="checkbox" ${p.current_state ? 'checked' : ''} onchange="toggleCondition('${p.id}', this.checked)">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            return html;
+        }
+
+        function applyTemplate(content) {
+            const textarea = document.getElementById('user-input');
+            if (textarea) {
+                textarea.value = content;
+            }
+        }
+
+        function toggleCondition(id, checked) {
+            // 实时更新本地 UI 状态
+            const container = document.getElementById(`container-${id}`);
+            if (container) {
+                if (checked) {
+                    container.classList.add('is-active');
+                } else {
+                    container.classList.remove('is-active');
+                }
+            }
+
+            // 同步更新本地 customPrompts 数据
+            if (customPrompts && customPrompts.prompts) {
+                const prompt = customPrompts.prompts.find(p => p.id === id);
+                if (prompt) {
+                    prompt.current_state = checked;
+                }
+            }
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    message_type: 'mcp_action',
+                    payload: {
+                        action: 'update_conditional_state',
+                        promptId: id,
+                        newState: checked,
+                        ...currentRouteContext()
+                    }
+                }));
+            }
+        }
+
+        // 生成条件性内容（上下文追加）
+        function generateConditionalContent() {
+            if (!customPrompts || !customPrompts.prompts) return '';
+            
+            const conditionals = customPrompts.prompts.filter(p => p.type === 'conditional');
+            const conditionalTexts = [];
+            
+            conditionals.forEach(prompt => {
+                // 只有在 is_active 为 true 时才追加内容
+                if (prompt.is_active !== false) {
+                    const isEnabled = prompt.current_state || false;
+                    const template = isEnabled ? prompt.template_true : prompt.template_false;
+                    
+                    if (template && template.trim()) {
+                        conditionalTexts.push(template.trim());
+                    }
+                }
+            });
+            
+            return conditionalTexts.length > 0 ? '\n\n' + conditionalTexts.join('\n') : '';
+        }
+
+        startHealthPolling();
+        connect();
+    </script>
+</body>
+</html>

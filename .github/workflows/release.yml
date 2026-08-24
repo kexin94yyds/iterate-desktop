@@ -1,0 +1,646 @@
+name: Build CLI Tools
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  RELEASE_AUTHORITY_REF: ${{ vars.RELEASE_AUTHORITY_REF }}
+
+jobs:
+  build-cli:
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target aarch64-apple-darwin
+            name: macos-aarch64
+          - platform: macos-latest
+            args: --target x86_64-apple-darwin
+            name: macos-x86_64
+          - platform: ubuntu-22.04
+            args: ''
+            name: linux-x86_64
+          - platform: windows-latest
+            args: ''
+            name: windows-x86_64
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install system dependencies (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            pkg-config \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libgdk-pixbuf2.0-dev \
+            libpango1.0-dev \
+            libatk1.0-dev \
+            libcairo-gobject2 \
+            libjavascriptcoregtk-4.1-dev \
+            libasound2-dev \
+            libpulse-dev \
+            libjack-dev
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: lts/*
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable (2026-08-05)
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Validate release public key for Windows/Linux updater
+        if: matrix.platform != 'macos-latest'
+        shell: bash
+        env:
+          ITERATE_RELEASE_PUBLIC_KEY_B64: ${{ secrets.ITERATE_RELEASE_PUBLIC_KEY_B64 }}
+        run: |
+          if [[ -z "${ITERATE_RELEASE_PUBLIC_KEY_B64:-}" ]]; then
+            echo "ITERATE_RELEASE_PUBLIC_KEY_B64 secret is required so Windows/Linux updater verification has an embedded public key"
+            exit 1
+          fi
+
+      - name: Build mcp-server binary
+        if: matrix.platform == 'windows-latest'
+        env:
+          CARGO_PROFILE_RELEASE_LTO: thin
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
+        run: cargo build --release --bin mcp-server
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build with Tauri (no bundle)
+        shell: bash
+        env:
+          ITERATE_RELEASE_PUBLIC_KEY_B64: ${{ secrets.ITERATE_RELEASE_PUBLIC_KEY_B64 }}
+        run: |
+          if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
+            if [[ "${{ matrix.args }}" == *"aarch64"* ]]; then
+              pnpm dlx @tauri-apps/cli@2.10.1 build --target aarch64-apple-darwin --no-bundle
+            else
+              pnpm dlx @tauri-apps/cli@2.10.1 build --target x86_64-apple-darwin --no-bundle
+            fi
+          elif [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
+            export CARGO_PROFILE_RELEASE_LTO=thin
+            export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
+            pnpm dlx @tauri-apps/cli@2.10.1 build --no-bundle
+          else
+            # Linux build - 移除静态链接标志以避免 proc-macro 编译问题
+            pnpm dlx @tauri-apps/cli@2.10.1 build --no-bundle
+          fi
+
+      - name: Create CLI package
+        shell: bash
+        run: |
+          mkdir -p cli-package
+
+          # 获取完整的 tag 名称
+          TAG_NAME="${{ github.ref_name }}"
+
+          # 确定目标目录
+          if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
+            if [[ "${{ matrix.args }}" == *"aarch64"* ]]; then
+              TARGET_DIR="target/aarch64-apple-darwin/release"
+            else
+              TARGET_DIR="target/x86_64-apple-darwin/release"
+            fi
+          elif [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
+            TARGET_DIR="target/release"
+          else
+            TARGET_DIR="target/release"
+          fi
+
+          # 复制二进制文件与安装材料
+          if [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
+            WEBVIEW2_LOADER="$(node scripts/select-windows-x64-webview2-loader.mjs target)"
+            if [[ -z "$WEBVIEW2_LOADER" || ! -f "$WEBVIEW2_LOADER" ]]; then
+              echo "Missing x86-64 WebView2Loader.dll"
+              exit 1
+            fi
+            mkdir -p cli-package/app
+            cp "$TARGET_DIR/iterate.exe" cli-package/app/
+            cp "$TARGET_DIR/mcp-server.exe" cli-package/app/
+            cp "$WEBVIEW2_LOADER" cli-package/app/WebView2Loader.dll
+            cp "docs/iterate_安装指南.md" "cli-package/INSTALLATION.md"
+            cp "release-package/windows/Install iterate.bat" "cli-package/Install iterate.bat"
+            cp "release-package/windows/Start iterate.bat" "cli-package/Start iterate.bat"
+            cd cli-package
+            pwsh -NoProfile -File ../scripts/windows-install-smoke.ps1 -PackageDir .
+            7z a ../iterate-package-${TAG_NAME}-${{ matrix.name }}.zip .
+          else
+            cp "$TARGET_DIR/iterate" cli-package/
+            cp "$TARGET_DIR/mcp-server" cli-package/
+            cp "install.sh" cli-package/
+            cp "docs/iterate_安装指南.md" "cli-package/INSTALLATION.md"
+            cd cli-package
+            tar -czf ../iterate-package-${TAG_NAME}-${{ matrix.name }}.tar.gz *
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: iterate-package-${{ matrix.name }}
+          path: |
+            iterate-package-*.tar.gz
+            iterate-package-*.zip
+          if-no-files-found: ignore
+
+  build-macos-gui:
+    name: Build macOS GUI Artifacts
+    runs-on: macos-14
+    permissions:
+      contents: read
+
+    env:
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      CUNZHI_MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Validate required macOS release secrets
+        id: macos_secrets
+        shell: bash
+        run: |
+          missing=0
+          for name in MACOS_CERTIFICATE_P12 MACOS_CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required secret: ${name}"
+              missing=1
+            fi
+          done
+
+          if [[ $missing -ne 0 ]]; then
+            echo "Required macOS signing / notarization secrets are incomplete; refusing to publish a release that would reuse an older macOS artifact."
+            exit 1
+          fi
+
+          echo "available=true" >> "$GITHUB_OUTPUT"
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Setup Node.js
+        if: steps.macos_secrets.outputs.available == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: lts/*
+
+      - name: Install pnpm
+        if: steps.macos_secrets.outputs.available == 'true'
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Install Rust stable
+        if: steps.macos_secrets.outputs.available == 'true'
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable (2026-08-05)
+
+      - name: Rust cache
+        if: steps.macos_secrets.outputs.available == 'true'
+        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Install frontend dependencies
+        if: steps.macos_secrets.outputs.available == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Import Developer ID certificate
+        if: steps.macos_secrets.outputs.available == 'true'
+        shell: bash
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD || secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/cunzhi-signing.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/cunzhi-signing.keychain-db"
+
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security \
+            -T /usr/bin/productbuild
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security default-keychain -d user -s "$KEYCHAIN_PATH"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+      - name: Build signed macOS delivery artifacts
+        if: steps.macos_secrets.outputs.available == 'true'
+        shell: bash
+        run: pnpm delivery:macos
+
+      - name: Notarize macOS app bundle
+        if: steps.macos_secrets.outputs.available == 'true'
+        shell: bash
+        run: pnpm notarize:macos
+
+      - name: Prepare stable macOS release asset names
+        if: steps.macos_secrets.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+
+          DMG_PATH="$(find target/release/delivery/macos -maxdepth 1 -type f -name '*.dmg' | head -n 1)"
+          ZIP_PATH="target/release/delivery/macos/iterate.app.zip"
+
+          if [[ -z "${DMG_PATH}" || ! -f "${DMG_PATH}" ]]; then
+            echo "Missing notarized DMG in delivery output"
+            exit 1
+          fi
+
+          if [[ ! -f "${ZIP_PATH}" ]]; then
+            echo "Missing notarized app zip in delivery output"
+            exit 1
+          fi
+
+          cp "${DMG_PATH}" "release-assets/iterate_${TAG_VERSION}_aarch64.dmg"
+          cp "${DMG_PATH}" release-assets/iterate_aarch64.dmg
+          cp "${ZIP_PATH}" release-assets/iterate-macos.zip
+          cp target/release/delivery/macos/INSTALLATION.md release-assets/INSTALLATION.md
+          cp target/release/delivery/macos/INSTALL_PROMPT.md release-assets/INSTALL_PROMPT.md
+
+      - name: Upload notarized GUI artifacts
+        if: steps.macos_secrets.outputs.available == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: iterate-gui-macos
+          path: |
+            release-assets/*
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs:
+      - build-cli
+      - build-macos-gui
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Verify tag is on the release authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${RELEASE_AUTHORITY_REF:-}" ]]; then
+            echo "RELEASE_AUTHORITY_REF repository variable is required"
+            exit 1
+          fi
+
+          git fetch origin "${RELEASE_AUTHORITY_REF}"
+          TAG_COMMIT="$(git rev-list -n 1 "${GITHUB_REF}")"
+          if ! git merge-base --is-ancestor "${TAG_COMMIT}" "origin/${RELEASE_AUTHORITY_REF}"; then
+            echo "Release tag ${GITHUB_REF_NAME} (${TAG_COMMIT}) is not reachable from origin/${RELEASE_AUTHORITY_REF}"
+            exit 1
+          fi
+
+          echo "Release tag ${GITHUB_REF_NAME} is authority-backed by ${RELEASE_AUTHORITY_REF}"
+
+      - name: Verify version consistency
+        run: |
+          # 获取 git tag 版本号（去掉 v 前缀）
+          TAG_NAME="${{ github.ref_name }}"
+          TAG_VERSION_NUMBER=${TAG_NAME#v}
+
+          # 从项目文件读取版本号
+          if [ -f "version.json" ]; then
+            PROJECT_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' version.json | cut -d'"' -f4)
+          elif [ -f "Cargo.toml" ]; then
+            PROJECT_VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d'"' -f2)
+          else
+            echo "Warning: No version file found, skipping version check"
+            exit 0
+          fi
+
+          echo "Git tag version: ${TAG_VERSION_NUMBER}"
+          echo "Project file version: ${PROJECT_VERSION}"
+
+          # 检查版本是否一致
+          if [ "${TAG_VERSION_NUMBER}" != "${PROJECT_VERSION}" ]; then
+            echo "❌ Version mismatch detected!"
+            echo "Git tag version: ${TAG_VERSION_NUMBER}"
+            echo "Project file version: ${PROJECT_VERSION}"
+            echo ""
+            echo "Please ensure the git tag matches the version in project files."
+            echo "You can either:"
+            echo "1. Update project files to match tag: ${TAG_VERSION_NUMBER}"
+            echo "2. Create a new tag that matches project version: v${PROJECT_VERSION}"
+            exit 1
+          fi
+
+          echo "✅ Version consistency check passed: ${TAG_VERSION_NUMBER}"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: artifacts
+
+      - name: Prepare stable release asset aliases
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p stable-assets
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+
+          MAC_DMG="$(find artifacts -type f \\( -name 'iterate_aarch64.dmg' -o -name "iterate_${TAG_VERSION}_aarch64.dmg" \\) | head -n 1)"
+          MAC_ZIP="$(find artifacts -type f -name 'iterate-macos.zip' | head -n 1)"
+          WIN_ZIP="$(find artifacts -type f -name 'iterate-package-*-windows-x86_64.zip' | head -n 1)"
+          INSTALLATION_DOC="$(find artifacts -type f -name 'INSTALLATION.md' | head -n 1)"
+          INSTALL_PROMPT_DOC="$(find artifacts -type f -name 'INSTALL_PROMPT.md' | head -n 1)"
+
+          if [[ -z "${MAC_DMG}" || -z "${MAC_ZIP}" ]]; then
+            echo "Fresh notarized macOS DMG and ZIP artifacts are required; refusing to reuse a prior public artifact."
+            exit 1
+          fi
+
+          cp "${MAC_DMG}" "stable-assets/iterate_${TAG_VERSION}_aarch64.dmg"
+          cp "${MAC_DMG}" stable-assets/iterate_aarch64.dmg
+
+          if [[ -z "${WIN_ZIP}" ]]; then
+            echo "Missing stable Windows ZIP artifact"
+            exit 1
+          fi
+
+          cp "${MAC_ZIP}" stable-assets/iterate-macos.zip
+
+          cp "${WIN_ZIP}" stable-assets/iterate-windows-x64.zip
+
+          if [[ -n "${INSTALLATION_DOC}" ]]; then
+            cp "${INSTALLATION_DOC}" stable-assets/INSTALLATION.md
+          else
+            cp docs/release/INSTALLATION.md stable-assets/INSTALLATION.md
+          fi
+
+          if [[ -n "${INSTALL_PROMPT_DOC}" ]]; then
+            cp "${INSTALL_PROMPT_DOC}" stable-assets/INSTALL_PROMPT.md
+          else
+            cp docs/release/INSTALL_PROMPT.md stable-assets/INSTALL_PROMPT.md
+          fi
+
+      - name: Sign public release assets and write provenance
+        shell: bash
+        env:
+          ITERATE_RELEASE_PRIVATE_KEY_B64: ${{ secrets.ITERATE_RELEASE_PRIVATE_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${ITERATE_RELEASE_PRIVATE_KEY_B64:-}" ]]; then
+            echo "ITERATE_RELEASE_PRIVATE_KEY_B64 is required for public release assets"
+            exit 1
+          fi
+
+          node scripts/release-sign-assets.mjs --out-dir stable-assets \
+            "stable-assets/iterate_${GITHUB_REF_NAME#v}_aarch64.dmg" \
+            stable-assets/iterate_aarch64.dmg \
+            stable-assets/iterate-macos.zip \
+            stable-assets/iterate-windows-x64.zip
+
+          TAG_COMMIT="$(git rev-list -n 1 "${GITHUB_REF}")"
+          TAG_TREE="$(git rev-parse "${TAG_COMMIT}^{tree}")"
+          export TAG_COMMIT TAG_TREE
+          node - <<'NODE'
+          const { createHash } = require('node:crypto')
+          const { readdirSync, readFileSync, writeFileSync } = require('node:fs')
+          const assets = readdirSync('stable-assets')
+            .filter((name) => /\.(dmg|zip)$/.test(name))
+            .sort()
+            .map((name) => ({
+              name,
+              sha256: createHash('sha256').update(readFileSync(`stable-assets/${name}`)).digest('hex'),
+            }))
+          writeFileSync('stable-assets/provenance.json', `${JSON.stringify({
+            schema_version: 1,
+            version: process.env.GITHUB_REF_NAME,
+            source_commit: process.env.TAG_COMMIT,
+            source_tree: process.env.TAG_TREE,
+            authority_ref: process.env.RELEASE_AUTHORITY_REF,
+            run_url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+            macos_notarization: 'required-and-validated-by-build-macos-gui',
+            assets,
+          }, null, 2)}\n`)
+          NODE
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@8091deedf5167fbc73856bc6687ca1f6a1d9b22a # git-cliff (2026-08-23)
+
+      - name: Generate changelog and release title
+        id: changelog
+        run: |
+          # 从 GitHub API 获取最新的 release 版本
+          echo "Fetching latest release from GitHub API..."
+          LATEST_RELEASE=$(curl -s "https://api.github.com/repos/kexin94yyds/iterate-releases/releases/latest" | jq -r '.tag_name // empty' 2>/dev/null || echo "")
+
+          if [ -z "$LATEST_RELEASE" ] || [ "$LATEST_RELEASE" = "null" ]; then
+            echo "GitHub API failed or no previous release found, falling back to git tags"
+            # 回退到使用 git tag 获取上一个版本
+            PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -2 | tail -1)
+            if [ -z "$PREVIOUS_TAG" ]; then
+              echo "No previous tags found, generating full changelog"
+            else
+              echo "Found previous tag: $PREVIOUS_TAG"
+            fi
+          else
+            PREVIOUS_TAG="$LATEST_RELEASE"
+            echo "Found previous release: $PREVIOUS_TAG"
+          fi
+
+          echo "Current tag: ${{ github.ref_name }}"
+          echo "Previous version: $PREVIOUS_TAG"
+
+          if [ -z "$PREVIOUS_TAG" ]; then
+            # 如果没有上一个版本，生成所有提交的 changelog
+            git-cliff --tag ${{ github.ref_name }} --output changelog.md
+          else
+            # 只生成从上一个版本到当前版本的 changelog
+            git-cliff $PREVIOUS_TAG..${{ github.ref_name }} --output changelog.md
+
+            # 添加 Full Changelog 链接
+            echo "" >> changelog.md
+            echo "**Full Changelog**: [$PREVIOUS_TAG...${{ github.ref_name }}](https://github.com/kexin94yyds/iterate/compare/$PREVIOUS_TAG...${{ github.ref_name }})" >> changelog.md
+          fi
+
+          # 生成发布标题
+          VERSION_NUMBER="${{ github.ref_name }}"
+          VERSION_NUMBER=${VERSION_NUMBER#v}  # 移除 v 前缀
+
+          # 从最近的提交中提取主要功能作为标题
+          if [ -z "$PREVIOUS_TAG" ]; then
+            COMMIT_RANGE="${{ github.ref_name }}"
+          else
+            COMMIT_RANGE="$PREVIOUS_TAG..${{ github.ref_name }}"
+          fi
+
+          MAIN_FEATURE=$(git log --oneline $COMMIT_RANGE | grep -E "^[a-f0-9]+ (feat|fix)" | head -1 | sed 's/^[a-f0-9]* //' | sed 's/^feat: /✨ /' | sed 's/^fix: /🐞 /')
+
+          if [ -z "$MAIN_FEATURE" ]; then
+            RELEASE_TITLE="$VERSION_NUMBER 📦 版本更新"
+          else
+            RELEASE_TITLE="$VERSION_NUMBER $MAIN_FEATURE"
+          fi
+
+          echo "release_title=$RELEASE_TITLE" >> $GITHUB_OUTPUT
+          echo "Generated release title: $RELEASE_TITLE"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
+        with:
+          files: |
+            artifacts/*/iterate-package-*.tar.gz
+            artifacts/*/iterate-package-*.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          name: ${{ steps.changelog.outputs.release_title }}
+          body_path: changelog.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync Release to Public iterate-releases Repo
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const tag = '${{ github.ref_name }}';
+
+            // 读取 changelog
+            let body = '';
+            try { body = fs.readFileSync('changelog.md', 'utf8'); } catch(e) {}
+            body = [
+              '## 可验证的公开交付版本',
+              '',
+              '本版本从当前受保护的发布权威构建，并随发布提供来源与完整性验证材料。此前版本保留为历史发布记录；建议新安装和更新使用本版本。',
+              '',
+              body,
+            ].join('\n');
+
+            // 先创建草稿；所有资产上传成功后再公开，避免留下半成品 Release。
+            let release;
+            try {
+              release = await github.rest.repos.createRelease({
+                owner: 'kexin94yyds',
+                repo: 'iterate-releases',
+                tag_name: tag,
+                name: '${{ steps.changelog.outputs.release_title }}',
+                body: body,
+                draft: true,
+                prerelease: false,
+              });
+              console.log('✅ Created draft release in iterate-releases:', release.data.html_url);
+            } catch(e) {
+              console.error('❌ Failed to create release:', e.message);
+              process.exit(1);
+            }
+
+            // 只同步公网需要的最终分发产物，避免站点链接依赖私有主仓的内部构建文件名
+            const publicAssetsDir = 'stable-assets';
+            if (!fs.existsSync(publicAssetsDir)) {
+              throw new Error('No stable-assets dir found; refusing to publish an empty release');
+            }
+
+            const files = fs.readdirSync(publicAssetsDir);
+            for (const file of files) {
+              if (!file.match(/\.(dmg|zip|md|sha256|sig|json)$/)) continue;
+              const filePath = path.join(publicAssetsDir, file);
+              const data = fs.readFileSync(filePath);
+              try {
+                await github.rest.repos.uploadReleaseAsset({
+                  owner: 'kexin94yyds',
+                  repo: 'iterate-releases',
+                  release_id: release.data.id,
+                  name: file,
+                  data: data,
+                });
+                console.log('✅ Uploaded:', file);
+              } catch(e) {
+                console.error('❌ Failed to upload', file, ':', e.message);
+                process.exit(1);
+              }
+            }
+
+            try {
+              release = await github.rest.repos.updateRelease({
+                owner: 'kexin94yyds',
+                repo: 'iterate-releases',
+                release_id: release.data.id,
+                draft: false,
+              });
+              console.log('✅ Published complete release:', release.data.html_url);
+            } catch(e) {
+              console.error('❌ Failed to publish completed release:', e.message);
+              process.exit(1);
+            }
+
+      - name: Trigger Homebrew Formula Update
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          script: |
+            console.log('Triggering Homebrew formula update...');
+            const authorityRef = process.env.RELEASE_AUTHORITY_REF;
+            if (!authorityRef) {
+              throw new Error('RELEASE_AUTHORITY_REF repository variable is required');
+            }
+
+            try {
+              const response = await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'update-homebrew.yml',
+                ref: authorityRef,
+                inputs: {
+                  tag_name: '${{ github.ref_name }}'
+                }
+              });
+
+              console.log('✅ Homebrew update workflow triggered successfully');
+            } catch (error) {
+              console.error('❌ Failed to trigger Homebrew update workflow:', error);
+              // 不让这个错误阻止主要的发布流程
+              console.log('Continuing with release process...');
+            }

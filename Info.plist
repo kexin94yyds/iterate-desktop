@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>iterate 需要使用麦克风来把你的语音转换为文字。</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>iterate 需要使用系统语音识别来实时转写你的语音输入。</string>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>iterate 需要控制 Codex 与 System Events，以便在新建对话时自动发送 zhi 并恢复既有工作流。</string>
+</dict>
+</plist>

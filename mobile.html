@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>iterate</title>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<style>
+:root {
+  --bg: #101014; --bg2: #18181c; --bg3: #1f1f23;
+  --card: #18181c; --border: #374151; --border-light: #4b5563;
+  --text: #e5e7eb; --text2: #9ca3af; --text3: #6b7280;
+  --accent: #22c55e; --accent-bg: rgba(34,197,94,0.1);
+  --blue: #3b82f6; --purple: #8b5cf6; --orange: #f59e0b;
+  --red: #ef4444; --teal: #14b8a6;
+  --item-press: rgba(255,255,255,0.04);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+[data-theme="light"] {
+  --bg: #f5f5f5; --bg2: #ebebeb; --bg3: #e0e0e0;
+  --card: #ffffff; --border: #d4d4d4; --border-light: #e0e0e0;
+  --text: #1a1a1a; --text2: #555; --text3: #888;
+  --accent: #10b981; --accent-bg: rgba(16,185,129,0.12);
+  --item-press: rgba(17,24,39,0.05);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); min-height:100vh; -webkit-tap-highlight-color:transparent; }
+.container { max-width:600px; margin:0 auto; padding:0 16px 100px; }
+
+/* Header */
+.header { text-align:center; padding:40px 0 24px; }
+.header h1 { font-size:28px; font-weight:600; letter-spacing:-0.5px; }
+.header .logo { display:inline-flex; align-items:center; gap:10px; margin-bottom:8px; }
+.header .logo img { width:36px; height:36px; border-radius:10px; }
+.status-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; background:var(--accent-bg); color:var(--accent); font-size:12px; font-weight:500; margin-bottom:6px; }
+.status-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.subtitle { font-size:14px; color:var(--text2); }
+
+/* Tabs */
+.tabs { display:flex; align-items:center; justify-content:space-between; background:var(--bg2); border-radius:10px; padding:2px; margin:0 0 20px; border:1px solid var(--border); position:sticky; top:0; z-index:10; }
+.tab { flex:0 0 auto; display:flex; align-items:center; justify-content:center; align-self:center; text-align:center; padding:6px 16px; font-size:13px; font-weight:500; color:var(--text3); border-radius:8px; cursor:pointer; transition:all 0.2s; min-height:34px; touch-action:manipulation; }
+.tab.active { background:var(--card); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+
+/* Cards */
+.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:12px; }
+.card-title { font-size:15px; font-weight:600; margin-bottom:4px; }
+.card-sub { font-size:12px; color:var(--text2); margin-bottom:10px; }
+.card-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.card-header { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.feature-list { list-style:none; }
+.feature-list li { font-size:13px; color:var(--text2); padding:3px 0; display:flex; align-items:center; gap:6px; }
+.feature-list li::before { content:'•'; color:var(--accent); font-weight:bold; }
+
+/* MCP Tools */
+.tool-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; }
+.tool-info { display:flex; align-items:center; gap:12px; flex:1; min-width:0; }
+.tool-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.tool-name { font-size:14px; font-weight:500; }
+.tool-desc { font-size:11px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px; }
+.toggle { width:44px; height:24px; border-radius:12px; background:var(--border); position:relative; cursor:pointer; transition:background 0.2s; flex-shrink:0; }
+.toggle.on { background:var(--accent); }
+.toggle::after { content:''; width:20px; height:20px; border-radius:50%; background:#fff; position:absolute; top:2px; left:2px; transition:transform 0.2s; }
+.toggle.on::after { transform:translateX(20px); }
+
+/* Prompt Library */
+.prompt-item { padding:12px 16px; border-bottom:1px solid var(--border); }
+.prompt-item:last-child { border-bottom:none; }
+.prompt-name { font-size:14px; font-weight:500; margin-bottom:2px; }
+.prompt-content { font-size:12px; color:var(--text3); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.prompt-cat { display:inline-block; font-size:10px; padding:2px 8px; border-radius:10px; background:var(--accent-bg); color:var(--accent); margin-bottom:4px; }
+.empty-state { text-align:center; padding:40px 0; color:var(--text3); }
+.empty-state .icon { font-size:40px; margin-bottom:8px; }
+
+/* Settings */
+.settings-list { margin-top:4px; }
+.setting-item { width:100%; }
+.setting-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 0; min-height:72px; cursor:pointer; transition:background 0.15s; touch-action:manipulation; }
+.setting-row:active { background:var(--item-press); }
+.setting-main { display:flex; align-items:center; flex:1; min-width:0; }
+.setting-icon {
+  width:40px;
+  height:40px;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  flex-shrink:0;
+  margin-right:16px;
+  background:var(--setting-icon-bg-dark, rgba(59,130,246,0.12));
+  color:var(--setting-icon-color-dark, rgb(96,165,250));
+}
+[data-theme="light"] .setting-icon {
+  background:var(--setting-icon-bg-light, rgb(219,234,254));
+  color:var(--setting-icon-color-light, rgb(37,99,235));
+}
+.setting-meta { min-width:0; }
+.setting-name { font-size:18px; font-weight:500; letter-spacing:-0.025em; line-height:1.25; margin-bottom:4px; }
+.setting-desc { font-size:14px; font-weight:400; line-height:1.35; opacity:0.6; color:var(--text); }
+.setting-arrow { color:var(--text3); font-size:18px; flex-shrink:0; text-align:right; min-width:16px; }
+.setting-content { padding:0 4px 20px; display:none; }
+.setting-content.open { display:block; }
+.setting-content .info-text { font-size:12px; color:var(--text2); line-height:1.6; }
+.setting-content .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; min-height:44px; }
+.setting-content .toggle-label { font-size:13px; color:var(--text); }
+.setting-content .toggle-desc { font-size:11px; color:var(--text3); }
+.setting-content select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:14px; outline:none; min-height:44px; }
+.setting-content input[type="text"],.setting-content input[type="number"] { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:14px; outline:none; box-sizing:border-box; min-height:44px; }
+.setting-content .sub-section { margin-top:8px; padding:10px 12px; background:var(--bg2); border-radius:8px; border:1px solid var(--border); }
+/* Toggle switch */
+.toggle-switch { width:50px; height:28px; border-radius:14px; background:rgba(255,255,255,0.15); position:relative; cursor:pointer; transition:background 0.2s; flex-shrink:0; touch-action:manipulation; }
+.toggle-switch.on { background:var(--accent); }
+.toggle-switch::after { content:''; position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:50%; background:#fff; transition:transform 0.2s; }
+.toggle-switch.on::after { transform:translateX(22px); }
+
+/* Search */
+.search-bar { display:flex; gap:8px; margin-bottom:12px; }
+.search-input { flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:14px; outline:none; }
+.search-input:focus { border-color:var(--accent); }
+.search-input::placeholder { color:var(--text3); }
+
+/* Buttons */
+.btn { padding:10px 16px; border-radius:8px; border:none; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; min-height:44px; touch-action:manipulation; }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-secondary { background:var(--bg2); color:var(--text); border:1px solid var(--border); }
+
+/* Version */
+.version-card { text-align:center; }
+.version-num { font-size:20px; font-weight:700; margin:8px 0 4px; }
+
+/* Tab panes */
+.pane { display:none; }
+.pane.active { display:block; }
+
+/* Loading */
+.loading { text-align:center; padding:30px; color:var(--text3); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="logo">
+      <img src="/apple-touch-icon.png" alt="iterate">
+      <h1>iterate</h1>
+    </div>
+    <div><span class="status-badge"><span class="status-dot"></span>MCP 服务已启动</span></div>
+    <div class="subtitle">智能代码审查工具</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('intro')">介绍</div>
+    <div class="tab" onclick="switchTab('tools')">MCP 工具</div>
+    <div class="tab" onclick="switchTab('prompts')">参考提示词</div>
+    <div class="tab" onclick="switchTab('settings')">设置</div>
+  </div>
+
+  <!-- 介绍 -->
+  <div id="pane-intro" class="pane active">
+    <div class="card version-card">
+      <div style="font-size:24px;">∞</div>
+      <div class="version-num" id="version-text">...</div>
+      <div class="card-sub">智能代码审查工具，支持MCP协议集成</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(59,130,246,0.12);color:rgb(96,165,250);"><svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M26 2H6a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h4v4l6-4h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg></div>
+        <div><div class="card-title">Zhi 智能审查工具</div><div class="card-sub">iterate 交互系统</div></div>
+      </div>
+      <ul class="feature-list">
+        <li>智能代码审查交互</li><li>支持文本和图片输入</li><li>预定义选项支持</li><li>Markdown 渲染</li><li>跨平台快捷键支持</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(16,185,129,0.12);color:rgb(52,211,153);"><svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M29.71 28.29l-6.5-6.5A10 10 0 1 0 14 24a9.94 9.94 0 0 0 5.79-1.79l6.5 6.5a1 1 0 0 0 1.42-1.42zM6 14a8 8 0 1 1 8 8 8 8 0 0 1-8-8z"/></svg></div>
+        <div><div class="card-title">代码搜索工具</div><div class="card-sub">智能代码检索</div></div>
+      </div>
+      <ul class="feature-list">
+        <li>语义代码搜索</li><li>增量索引支持</li><li>多文件类型支持</li><li>自动索引更新</li><li>快速代码定位</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(245,158,11,0.12);color:rgb(251,191,36);"><svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M23.41 25.25a1 1 0 0 1-.54-1.85 6 6 0 0 0 0-10.8 1 1 0 0 1 1.08-1.68 8 8 0 0 1 0 14.16 1 1 0 0 1-.54.17zM16 28H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8l8 8v16z"/></svg></div>
+        <div><div class="card-title">音频通知系统</div><div class="card-sub">智能音效管理</div></div>
+      </div>
+      <ul class="feature-list">
+        <li>多种内置音效</li><li>自定义音频支持</li><li>网络音频播放</li><li>动态资源加载</li><li>音效试听功能</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(139,92,246,0.12);color:rgb(167,139,250);"><svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M28 16h-4a8 8 0 0 0-.57-2.05l2.83-2.83-2.83-2.83-2.83 2.83A8 8 0 0 0 18.55 10.55V6h-4v4.55a8 8 0 0 0-2.05.57l-2.83-2.83-2.83 2.83 2.83 2.83A8 8 0 0 0 9.1 16H4v4h5.1a8 8 0 0 0 .57 2.05l-2.83 2.83 2.83 2.83 2.83-2.83a8 8 0 0 0 2.05.57V30h4v-5.1a8 8 0 0 0 2.05-.57l2.83 2.83 2.83-2.83-2.83-2.83A8 8 0 0 0 23.9 20H28zM16 22a4 4 0 1 1 4-4 4 4 0 0 1-4 4z"/></svg></div>
+        <div><div class="card-title">个性化设置</div><div class="card-sub">全面配置选项</div></div>
+      </div>
+      <ul class="feature-list">
+        <li>深色/浅色主题</li><li>窗口大小控制</li><li>置顶显示设置</li><li>MCP工具管理</li><li>继续回复配置</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- MCP 工具 -->
+  <div id="pane-tools" class="pane">
+    <div class="card" style="padding:0;" id="tools-list">
+      <div class="loading">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 提示词库 -->
+  <div id="pane-prompts" class="pane">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="font-size:12px;color:var(--text3);" id="prompt-stats">加载中...</div>
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px;white-space:nowrap;" onclick="showDirImportModal()">目录导入</button>
+        <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px;white-space:nowrap;" onclick="document.getElementById('file-import-input').click()">文件导入</button>
+        <button class="btn btn-primary" style="font-size:11px;padding:4px 8px;white-space:nowrap;" onclick="showAddPromptModal()">+ 添加</button>
+      </div>
+    </div>
+    <input type="file" id="file-import-input" accept=".txt" multiple style="display:none;" onchange="handleFileImport(this)">
+    <div class="search-bar">
+      <input class="search-input" id="prompt-search" placeholder="搜索提示词..." oninput="filterPrompts()">
+    </div>
+    <div class="card" style="padding:0;" id="prompts-list">
+      <div class="loading">加载中...</div>
+    </div>
+    <div style="text-align:right;margin-top:8px;">
+      <button class="btn" style="color:var(--red);background:transparent;font-size:12px;" onclick="clearPromptLibrary()">清空提示词库</button>
+    </div>
+  </div>
+
+  <!-- 提示词添加/编辑模态框 -->
+  <div id="prompt-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:100;padding:20px;overflow-y:auto;">
+    <div style="max-width:500px;margin:40px auto;background:var(--card);border-radius:12px;border:1px solid var(--border);padding:20px;">
+      <div style="font-size:16px;font-weight:600;margin-bottom:16px;" id="prompt-modal-title">添加提示词</div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">名称 *</div>
+        <input type="text" id="prompt-form-name" placeholder="提示词名称（如：Debug）" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">分类</div>
+        <input type="text" id="prompt-form-category" placeholder="分类名称（如：编程、看书）" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">内容 *</div>
+        <textarea id="prompt-form-content" placeholder="提示词内容..." rows="6" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;resize:vertical;"></textarea>
+      </div>
+      <input type="hidden" id="prompt-form-id" value="">
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-secondary" onclick="closePromptModal()">取消</button>
+        <button class="btn btn-primary" onclick="savePromptForm()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 目录导入模态框 -->
+  <div id="dir-import-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:100;padding:20px;">
+    <div style="max-width:500px;margin:60px auto;background:var(--card);border-radius:12px;border:1px solid var(--border);padding:20px;">
+      <div style="font-size:16px;font-weight:600;margin-bottom:16px;">从目录导入提示词</div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">目录路径</div>
+        <input type="text" id="dir-import-path" value="" placeholder="桌面端允许访问的目录路径" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;">
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:16px;">将读取目录下所有 .txt 文件，支持 prompts_*_export.txt 格式</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-secondary" onclick="closeDirImportModal()">取消</button>
+        <button class="btn btn-primary" onclick="handleDirImport()">导入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置 -->
+  <div id="pane-settings" class="pane">
+    <div class="settings-list" id="settings-list"></div>
+  </div>
+</div>
+
+<script>
+const BASE = location.origin;
+let mcpTools = [];
+let promptLibrary = [];
+
+let appConfig = null;
+
+function homeFetch(path, options) {
+  if (typeof window.iterateHomeFetch === 'function') {
+    return window.iterateHomeFetch(path, options || {});
+  }
+  return fetch(BASE + path, options || {});
+}
+
+function requireOk(response) {
+  if (!response || !response.ok) {
+    throw new Error('HTTP ' + ((response && response.status) || 0));
+  }
+  return response;
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['intro','tools','prompts','settings'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-' + name).classList.add('active');
+
+  if (name === 'tools' && mcpTools.length === 0) loadTools();
+  if (name === 'prompts' && promptLibrary.length === 0) loadPrompts();
+  if (name === 'settings' && !appConfig) loadSettings();
+}
+
+// Load version on page init
+homeFetch('/api/version').then(requireOk).then(r=>r.json()).then(d=>{
+  document.getElementById('version-text').textContent = 'v'+(d.version||'?');
+}).catch(()=>{});
+
+async function loadTools() {
+  try {
+    const res = requireOk(await homeFetch('/api/mcp-tools'));
+    const data = await res.json();
+    if (!Array.isArray(data.tools)) throw new Error('invalid_tools_payload');
+    mcpTools = data.tools;
+    renderTools();
+  } catch(e) {
+    document.getElementById('tools-list').innerHTML = '<div class="loading">加载失败</div>';
+  }
+}
+
+function renderTools() {
+  const icons = {
+    zhi:'<svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor"><path d="M26 2H6a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h4v4l6-4h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>',
+    ji:'<svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor"><path d="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2zm0 26a12 12 0 1 1 12-12 12 12 0 0 1-12 12z"/><path d="M11.5 11a2.5 2.5 0 1 0 2.5 2.5A2.5 2.5 0 0 0 11.5 11zm9 0a2.5 2.5 0 1 0 2.5 2.5A2.5 2.5 0 0 0 20.5 11zM16 24a8 8 0 0 0 6.85-3.89l-1.71-1a6 6 0 0 1-10.28 0l-1.71 1A8 8 0 0 0 16 24z"/></svg>',
+    sou:'<svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor"><path d="M29.71 28.29l-6.5-6.5A10 10 0 1 0 14 24a9.94 9.94 0 0 0 5.79-1.79l6.5 6.5a1 1 0 0 0 1.42-1.42zM6 14a8 8 0 1 1 8 8 8 8 0 0 1-8-8z"/></svg>',
+    acemcp:'<svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor"><path d="M26 16a10 10 0 0 0-4-8l-1.5 1.5A8 8 0 1 1 8 16h4l-6 6-6-6h4A12 12 0 1 0 26 16z"/></svg>'
+  };
+  const defaultIcon = '<svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor"><path d="M27 16.76v-1.53l1.92-1.68A2 2 0 0 0 29.3 11l-2.36-4a2 2 0 0 0-1.73-1h-.26l-2.5.64-1.32-.77-.39-2.53A2 2 0 0 0 19 2h-6a2 2 0 0 0-2 1.34l-.39 2.53-1.32.77L6.79 6h-.26A2 2 0 0 0 4.8 7l-2.36 4a2 2 0 0 0 .38 2.55L4.74 15.23v1.53l-1.92 1.68A2 2 0 0 0 2.44 21l2.36 4a2 2 0 0 0 1.73 1h.26l2.5-.64 1.32.77.39 2.53A2 2 0 0 0 13 30h6a2 2 0 0 0 2-1.34l.39-2.53 1.32-.77 2.5.64h.26a2 2 0 0 0 1.73-1l2.36-4a2 2 0 0 0-.38-2.55zM16 22a6 6 0 1 1 6-6 6 6 0 0 1-6 6z"/></svg>';
+  const colors = { zhi:'59,130,246', ji:'139,92,246', sou:'16,185,129', acemcp:'245,158,11' };
+  const el = document.getElementById('tools-list');
+  if (mcpTools.length === 0) { el.innerHTML = '<div class="empty-state"><div style="font-size:40px;margin-bottom:8px;color:var(--text3);">'+defaultIcon+'</div><div>暂无 MCP 工具</div></div>'; return; }
+  el.innerHTML = mcpTools.map((t, i) => {
+    const icon = icons[t.id] || defaultIcon;
+    const c = colors[t.id] || '100,100,100';
+    const border = i < mcpTools.length - 1 ? 'border-bottom:1px solid var(--border);' : '';
+    return `<div class="tool-row" style="${border}">
+      <div class="tool-info">
+        <div class="tool-icon" style="background:rgba(${c},0.12);color:rgb(${c});">${icon}</div>
+        <div><div class="tool-name">${escapeHtml(t.name)}</div><div class="tool-desc">${escapeHtml(t.description)}</div></div>
+      </div>
+      <div class="toggle ${t.enabled?'on':''}" data-action="toggle-tool" data-id="${escapeHtml(t.id)}" ${!t.can_disable?'style="opacity:0.5;pointer-events:none;"':''}></div>
+    </div>`;
+  }).join('');
+  el.onclick = event => {
+    const control = event.target.closest('[data-action="toggle-tool"]');
+    if (control && el.contains(control)) toggleTool(control.dataset.id, control);
+  };
+}
+
+async function toggleTool(id, el) {
+  const tool = mcpTools.find(t => t.id === id);
+  if (!tool || !tool.can_disable) return;
+  const nextEnabled = !tool.enabled;
+  el.style.pointerEvents = 'none';
+  try {
+    requireOk(await homeFetch('/api/mcp-tools', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({tool_id:id, enabled:nextEnabled})
+    }));
+    tool.enabled = nextEnabled;
+    el.classList.toggle('on', nextEnabled);
+    showToast(nextEnabled ? '工具已启用' : '工具已停用');
+  } catch (error) {
+    showToast('保存失败');
+  } finally {
+    el.style.pointerEvents = '';
+  }
+}
+
+async function loadPrompts() {
+  try {
+    const res = requireOk(await homeFetch('/api/prompt-library'));
+    const data = await res.json();
+    if (!Array.isArray(data.items)) throw new Error('invalid_prompt_library_payload');
+    promptLibrary = data.items;
+    renderPrompts();
+    return true;
+  } catch(e) {
+    document.getElementById('prompts-list').innerHTML = '<div class="loading">加载失败</div>';
+    return false;
+  }
+}
+
+function filterPrompts() {
+  const q = document.getElementById('prompt-search').value.toLowerCase();
+  renderPrompts(q);
+}
+
+function renderPrompts(query = '') {
+  const el = document.getElementById('prompts-list');
+  const statsEl = document.getElementById('prompt-stats');
+  const cats = {};
+  promptLibrary.forEach(p => { (cats[p.category||'未分类'] = cats[p.category||'未分类'] || []).push(p); });
+  if (statsEl) statsEl.textContent = `共 ${promptLibrary.length} 条提示词，${Object.keys(cats).length} 个分类`;
+
+  let items = promptLibrary;
+  if (query) items = items.filter(p => (p.name||'').toLowerCase().includes(query) || (p.content||'').toLowerCase().includes(query) || (p.category||'').toLowerCase().includes(query));
+  if (items.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="icon" style="color:var(--text3);"><svg width="32" height="32" viewBox="0 0 32 32" fill="currentColor"><path d="M28 8H16l-2-2H4a2 2 0 0 0-2 2v20a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-8 14H12v-2h8zm4-4H8v-2h16z"/></svg></div><div>' + (promptLibrary.length === 0 ? '提示词库为空<br><span style="font-size:11px;">点击"添加"新建，或从目录导入提示词</span>' : '未找到匹配提示词') + '</div></div>';
+    return;
+  }
+  const filteredCats = {};
+  items.forEach(p => { (filteredCats[p.category||'未分类'] = filteredCats[p.category||'未分类'] || []).push(p); });
+  let html = '';
+  for (const [cat, ps] of Object.entries(filteredCats)) {
+    html += `<div style="padding:10px 16px 4px;"><span class="prompt-cat">${escapeHtml(cat)}</span> <span style="font-size:11px;color:var(--text3);">${ps.length} 条</span></div>`;
+    ps.forEach(p => {
+      html += `<div class="prompt-item" style="display:flex;align-items:flex-start;justify-content:space-between;">
+        <div style="flex:1;min-width:0;cursor:pointer;" data-action="copy-prompt" data-id="${escapeHtml(p.id)}">
+          <div class="prompt-name">${escapeHtml(p.name)}</div>
+          <div class="prompt-content">${escapeHtml(p.content)}</div>
+        </div>
+        <div style="display:flex;gap:4px;margin-left:8px;flex-shrink:0;">
+          <button data-action="edit-prompt" data-id="${escapeHtml(p.id)}" style="background:none;border:none;color:var(--accent);font-size:16px;cursor:pointer;padding:4px;"><svg width="14" height="14" viewBox="0 0 32 32" fill="currentColor"><path d="M2 26h28v2H2zM25.4 9c.8-.8.8-2 0-2.8l-3.6-3.6c-.8-.8-2-.8-2.8 0l-15 15V24h6.4l15-15zm-5-5L24 7.6l-3 3L17.4 7l3-3zM6 22v-3.6l10-10L19.6 12l-10 10H6z"/></svg></button>
+          <button data-action="delete-prompt" data-id="${escapeHtml(p.id)}" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:4px;"><svg width="14" height="14" viewBox="0 0 32 32" fill="currentColor"><path d="M12 12h2v12h-2zm6 0h2v12h-2z"/><path d="M4 6v2h2v20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8h2V6zm4 22V8h16v20zm4-26h8v2h-8z"/></svg></button>
+        </div>
+      </div>`;
+    });
+  }
+  el.innerHTML = html;
+  el.onclick = event => {
+    const control = event.target.closest('[data-action]');
+    if (!control || !el.contains(control)) return;
+    const item = promptLibrary.find(prompt => prompt.id === control.dataset.id);
+    if (!item) return;
+    if (control.dataset.action === 'copy-prompt') copyPrompt(item.content || '');
+    if (control.dataset.action === 'edit-prompt') showEditPromptModal(item.id);
+    if (control.dataset.action === 'delete-prompt' && confirm('删除此提示词？')) deletePrompt(item.id);
+  };
+}
+
+function copyPrompt(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('已复制到剪贴板');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    const copied = document.execCommand('copy'); document.body.removeChild(ta);
+    showToast(copied ? '已复制到剪贴板' : '复制失败');
+  });
+}
+
+// Prompt CRUD
+function showAddPromptModal() {
+  document.getElementById('prompt-modal-title').textContent = '添加提示词';
+  document.getElementById('prompt-form-id').value = '';
+  document.getElementById('prompt-form-name').value = '';
+  document.getElementById('prompt-form-category').value = '';
+  document.getElementById('prompt-form-content').value = '';
+  document.getElementById('prompt-modal').style.display = '';
+}
+function showEditPromptModal(id) {
+  const item = promptLibrary.find(p => p.id === id);
+  if (!item) return;
+  document.getElementById('prompt-modal-title').textContent = '编辑提示词';
+  document.getElementById('prompt-form-id').value = item.id;
+  document.getElementById('prompt-form-name').value = item.name || '';
+  document.getElementById('prompt-form-category').value = item.category || '';
+  document.getElementById('prompt-form-content').value = item.content || '';
+  document.getElementById('prompt-modal').style.display = '';
+}
+function closePromptModal() { document.getElementById('prompt-modal').style.display = 'none'; }
+
+async function savePromptForm() {
+  const id = document.getElementById('prompt-form-id').value;
+  const name = document.getElementById('prompt-form-name').value.trim();
+  const content = document.getElementById('prompt-form-content').value.trim();
+  const category = document.getElementById('prompt-form-category').value.trim() || '未分类';
+  if (!name || !content) { showToast('名称和内容不能为空'); return; }
+  const item = { id: id || ('prompt_'+Date.now()), name, content, category };
+  try {
+    requireOk(await homeFetch('/api/prompt-library', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(item) }));
+    closePromptModal();
+    showToast(id ? '已更新' : '已添加');
+    await loadPrompts();
+  } catch(e) { showToast('保存失败'); }
+}
+
+async function deletePrompt(id) {
+  try {
+    requireOk(await homeFetch('/api/prompt-library?id='+encodeURIComponent(id), { method:'DELETE' }));
+    showToast('已删除');
+    await loadPrompts();
+  } catch(e) { showToast('删除失败'); }
+}
+
+async function clearPromptLibrary() {
+  if (!confirm('确定要清空全部提示词吗？此操作不可撤销。')) return;
+  try {
+    requireOk(await homeFetch('/api/prompt-library?all=true', { method:'DELETE' }));
+    showToast('已清空');
+    await loadPrompts();
+  } catch (error) {
+    showToast('清空失败，请刷新后重试');
+    await loadPrompts();
+  }
+}
+
+// File import
+async function handleFileImport(input) {
+  if (!input.files || !input.files.length) return;
+  let imported = 0;
+  for (const file of input.files) {
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+      for (let i = 0; i < lines.length; i += 2) {
+        const name = lines[i];
+        const content = lines[i+1] || name;
+        const item = { id:'prompt_'+Date.now()+'_'+i, name, content, category: file.name.replace('.txt','') };
+        requireOk(await homeFetch('/api/prompt-library', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(item) }));
+        imported++;
+      }
+    } catch(e) {
+      showToast('部分文件导入失败');
+    }
+  }
+  input.value = '';
+  showToast('导入 '+imported+' 条');
+  await loadPrompts();
+}
+
+// Directory import
+function showDirImportModal() { document.getElementById('dir-import-modal').style.display = ''; }
+function closeDirImportModal() { document.getElementById('dir-import-modal').style.display = 'none'; }
+async function handleDirImport() {
+  const path = document.getElementById('dir-import-path').value.trim();
+  if (!path) { showToast('请输入目录路径'); return; }
+  try {
+    const res = requireOk(await homeFetch('/api/import-prompts-dir', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path}) }));
+    const data = await res.json();
+    closeDirImportModal();
+    showToast('导入 '+(data.imported||0)+' 条，跳过 '+(data.skipped||0)+' 条');
+    await loadPrompts();
+  } catch(e) { showToast('导入失败'); }
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:120px;left:50%;transform:translateX(-50%);padding:10px 24px;background:var(--card);color:var(--text);border-radius:20px;font-size:13px;border:1px solid var(--border);z-index:999;transition:opacity 0.3s;';
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 1500);
+}
+
+// Settings definitions for the mobile /mobile page.
+// Keep this order aligned with src/frontend/components/tabs/SettingsTab.vue.
+const settingsItems = [
+  { id:'theme', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2zm0 2a12 12 0 0 1 0 24V4z"/></svg>', tone:'primary', name:'主题设置', desc:'选择您喜欢的界面主题' },
+  { id:'font', icon:'<span style="font-weight:700;font-size:15px;">Aa</span>', tone:'orange', name:'字体设置', desc:'自定义应用字体系列和大小' },
+  { id:'reply', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M12 6v6H4v2h8v6l10-7z"/></svg>', tone:'blue', name:'继续回复设置', desc:'配置AI继续回复的行为' },
+  { id:'ghost-suggestions', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M25 4H7a3 3 0 0 0-3 3v18a3 3 0 0 0 3 3h18a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3zm-8 18h-2v-5h-5v-2h5v-5h2v5h5v2h-5z"/></svg>', tone:'teal', name:'幽灵补全词表', desc:'管理输入框幽灵补全触发词' },
+  { id:'speech-muscle-memory', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M16 4C9.4 4 4 9.1 4 15.5c0 3.6 1.7 6.8 4.4 8.9V28l4.3-2.2c1 .3 2.1.4 3.3.4 6.6 0 12-5.1 12-11.5S22.6 4 16 4zm-5 8h10v2H11zm0 4h7v2h-7z"/></svg>', tone:'purple', name:'肌肉记忆库', desc:'训练固定语音短语，命中后输出固定文本' },
+  { id:'custom-prompt', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M28 8H16l-2-2H4a2 2 0 0 0-2 2v20a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-8 14H12v-2h8zm4-4H8v-2h16z"/></svg>', tone:'orange', name:'提示词模板', desc:'管理快捷模板和上下文追加' },
+  { id:'prompt-library', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M4 4h6v6H4zm0 9h6v6H4zm0 9h6v6H4zm9-18h15v6H13zm0 9h15v6H13zm0 9h15v6H13z"/></svg>', tone:'teal', name:'提示词库', desc:'管理和导入提示词集合' },
+  { id:'shortcuts', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><rect x="2" y="8" width="28" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="6" y="12" width="4" height="3" rx="0.5"/><rect x="12" y="12" width="4" height="3" rx="0.5"/><rect x="18" y="12" width="4" height="3" rx="0.5"/><rect x="9" y="19" width="14" height="3" rx="0.5"/></svg>', tone:'indigo', name:'快捷键设置', desc:'自定义应用快捷键绑定' },
+  { id:'window', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M4 4v24h24V4zm2 2h20v4H6zm0 6h9v16H6zm11 0h9v16h-9z"/></svg>', tone:'green', name:'窗口设置', desc:'调整窗口显示和行为' },
+  { id:'audio', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M23.41 25.25a1 1 0 0 1-.54-1.85 6 6 0 0 0 0-10.8 1 1 0 0 1 1.08-1.68 8 8 0 0 1 0 14.16 1 1 0 0 1-.54.17zM16 28H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8l8 8v16z"/></svg>', tone:'yellow', name:'音频设置', desc:'配置音频通知和提示音' },
+  { id:'iterate', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M26 16a10 10 0 0 0-4-8l-1.5 1.5A8 8 0 1 1 8 16h4l-6 6-6-6h4A12 12 0 1 0 26 16z"/></svg>', tone:'violet', name:'iterate', desc:'查看连接并打开桌面端' },
+  { id:'config', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M28 16h-4a8 8 0 0 0-.57-2.05l2.83-2.83-2.83-2.83-2.83 2.83A8 8 0 0 0 18.55 10.55V6h-4v4.55a8 8 0 0 0-2.05.57l-2.83-2.83-2.83 2.83 2.83 2.83A8 8 0 0 0 9.1 16H4v4h5.1a8 8 0 0 0 .57 2.05l-2.83 2.83 2.83 2.83 2.83-2.83a8 8 0 0 0 2.05.57V30h4v-5.1a8 8 0 0 0 2.05-.57l2.83 2.83 2.83-2.83-2.83-2.83A8 8 0 0 0 23.9 20H28zM16 22a4 4 0 1 1 4-4 4 4 0 0 1-4 4z"/></svg>', tone:'blue', name:'刷新配置', desc:'从桌面端获取最新设置' },
+  { id:'version', icon:'<svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor"><path d="M16 4A12 12 0 1 0 28 16 12 12 0 0 0 16 4zm0 22A10 10 0 1 1 26 16 10 10 0 0 1 16 26z"/><path d="M17 8h-2v9h7v-2h-5z"/></svg>', tone:'purple', name:'版本信息', desc:'读取桌面端当前版本' },
+];
+
+const settingIconPalette = {
+  primary: {
+    lightBg: 'rgb(237,233,254)',
+    lightText: 'rgb(124,58,237)',
+    darkBg: 'rgba(139,92,246,0.12)',
+    darkText: 'rgb(167,139,250)',
+  },
+  orange: {
+    lightBg: 'rgb(255,237,213)',
+    lightText: 'rgb(234,88,12)',
+    darkBg: 'rgba(245,158,11,0.12)',
+    darkText: 'rgb(251,191,36)',
+  },
+  blue: {
+    lightBg: 'rgb(219,234,254)',
+    lightText: 'rgb(37,99,235)',
+    darkBg: 'rgba(59,130,246,0.12)',
+    darkText: 'rgb(96,165,250)',
+  },
+  green: {
+    lightBg: 'rgb(220,252,231)',
+    lightText: 'rgb(22,163,74)',
+    darkBg: 'rgba(16,185,129,0.12)',
+    darkText: 'rgb(52,211,153)',
+  },
+  yellow: {
+    lightBg: 'rgb(254,249,195)',
+    lightText: 'rgb(202,138,4)',
+    darkBg: 'rgba(245,158,11,0.12)',
+    darkText: 'rgb(250,204,21)',
+  },
+  emerald: {
+    lightBg: 'rgb(209,250,229)',
+    lightText: 'rgb(5,150,105)',
+    darkBg: 'rgba(16,185,129,0.12)',
+    darkText: 'rgb(52,211,153)',
+  },
+  violet: {
+    lightBg: 'rgb(237,233,254)',
+    lightText: 'rgb(124,58,237)',
+    darkBg: 'rgba(139,92,246,0.12)',
+    darkText: 'rgb(167,139,250)',
+  },
+  indigo: {
+    lightBg: 'rgb(224,231,255)',
+    lightText: 'rgb(79,70,229)',
+    darkBg: 'rgba(99,102,241,0.12)',
+    darkText: 'rgb(129,140,248)',
+  },
+  teal: {
+    lightBg: 'rgb(204,251,241)',
+    lightText: 'rgb(13,148,136)',
+    darkBg: 'rgba(20,184,166,0.12)',
+    darkText: 'rgb(45,212,191)',
+  },
+  purple: {
+    lightBg: 'rgb(243,232,255)',
+    lightText: 'rgb(147,51,234)',
+    darkBg: 'rgba(139,92,246,0.12)',
+    darkText: 'rgb(192,132,252)',
+  },
+};
+
+const speechMuscleMemoryState = {
+  entries: [],
+  loaded: false,
+  loading: false,
+};
+
+const speechCorrectionMemoryState = {
+  entries: [],
+  loaded: false,
+  loading: false,
+};
+
+const speechMuscleMemoryEditorState = {
+  editingId: null,
+};
+
+const speechTrainingUIState = {
+  activeEntryId: null,
+};
+
+function speechMuscleMemoryBridgeAvailable() {
+  return !!(window.iterateSpeechMuscleMemory && window.iterateSpeechMuscleMemory.available);
+}
+
+function speechCorrectionMemoryBridgeAvailable() {
+  return !!(window.iterateSpeechCorrectionMemory && window.iterateSpeechCorrectionMemory.available);
+}
+
+async function fetchSpeechMuscleMemoryFromServer() {
+  const res = requireOk(await homeFetch('/api/speech-muscle-memory'));
+  const data = await res.json();
+  return Array.isArray(data.entries) ? data.entries : [];
+}
+
+async function saveSpeechMuscleMemoryToServer(entries) {
+  const res = requireOk(await homeFetch('/api/speech-muscle-memory', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entries }),
+  }));
+  const data = await res.json();
+  return Array.isArray(data.entries) ? data.entries : entries;
+}
+
+function normalizeSpeechMemoryEntries(entries) {
+  return (Array.isArray(entries) ? entries : []).map((entry) => ({
+    id: entry.id || ('speech-memory-' + Date.now() + '-' + Math.random().toString(36).slice(2)),
+    spokenPhrase: entry.spokenPhrase || '',
+    outputText: entry.outputText || '',
+    trainingCount: Number(entry.trainingCount || 0),
+    isEnabled: entry.isEnabled !== false,
+  }));
+}
+
+function normalizeSpeechCorrectionEntries(entries) {
+  return (Array.isArray(entries) ? entries : []).map((entry) => ({
+    id: entry.id || ('speech-correction-' + Date.now() + '-' + Math.random().toString(36).slice(2)),
+    observedText: entry.observedText || '',
+    intendedText: entry.intendedText || '',
+    contextTerms: Array.isArray(entry.contextTerms) ? entry.contextTerms.filter(Boolean) : [],
+    hitCount: Number(entry.hitCount || 0),
+    confirmCount: Number(entry.confirmCount || 0),
+    rejectCount: Number(entry.rejectCount || 0),
+    isEnabled: entry.isEnabled !== false,
+    source: entry.source || 'training_mismatch',
+    createdAt: entry.createdAt || new Date().toISOString(),
+    updatedAt: entry.updatedAt || new Date().toISOString(),
+  }));
+}
+
+async function loadSpeechMuscleMemory(force = false) {
+  if (speechMuscleMemoryState.loading) return;
+  if (speechMuscleMemoryState.loaded && !force) return;
+  speechMuscleMemoryState.loading = true;
+  try {
+    let entries = [];
+    if (speechMuscleMemoryBridgeAvailable()) {
+      entries = await window.iterateSpeechMuscleMemory.getEntries();
+    } else {
+      try {
+        entries = await fetchSpeechMuscleMemoryFromServer();
+      } catch (serverError) {
+        entries = JSON.parse(localStorage.getItem('speech_muscle_memory_store') || '[]');
+      }
+    }
+    speechMuscleMemoryState.entries = normalizeSpeechMemoryEntries(entries);
+    speechMuscleMemoryState.loaded = true;
+  } catch (e) {
+    speechMuscleMemoryState.entries = [];
+    speechMuscleMemoryState.loaded = true;
+  } finally {
+    speechMuscleMemoryState.loading = false;
+    rerenderSpeechMuscleMemorySection();
+  }
+}
+
+async function loadSpeechCorrectionMemory(force = false) {
+  if (speechCorrectionMemoryState.loading) return;
+  if (speechCorrectionMemoryState.loaded && !force) return;
+  speechCorrectionMemoryState.loading = true;
+  try {
+    let entries = [];
+    if (speechCorrectionMemoryBridgeAvailable()) {
+      entries = await window.iterateSpeechCorrectionMemory.getEntries();
+    } else {
+      entries = JSON.parse(localStorage.getItem('speech_correction_memory_store') || '[]');
+    }
+    speechCorrectionMemoryState.entries = normalizeSpeechCorrectionEntries(entries);
+    speechCorrectionMemoryState.loaded = true;
+  } catch (e) {
+    speechCorrectionMemoryState.entries = [];
+    speechCorrectionMemoryState.loaded = true;
+  } finally {
+    speechCorrectionMemoryState.loading = false;
+  }
+}
+
+async function saveSpeechMuscleMemory(entries) {
+  const normalized = normalizeSpeechMemoryEntries(entries);
+  if (speechMuscleMemoryBridgeAvailable()) {
+    await window.iterateSpeechMuscleMemory.saveEntries(normalized);
+  } else {
+    const saved = await saveSpeechMuscleMemoryToServer(normalized);
+    localStorage.setItem('speech_muscle_memory_store', JSON.stringify(saved));
+    speechMuscleMemoryState.entries = normalizeSpeechMemoryEntries(saved);
+    speechMuscleMemoryState.loaded = true;
+    rerenderSpeechMuscleMemorySection();
+    return;
+  }
+  speechMuscleMemoryState.entries = normalized;
+  speechMuscleMemoryState.loaded = true;
+  rerenderSpeechMuscleMemorySection();
+}
+
+async function saveSpeechCorrectionMemory(entries) {
+  const normalized = normalizeSpeechCorrectionEntries(entries);
+  if (speechCorrectionMemoryBridgeAvailable()) {
+    await window.iterateSpeechCorrectionMemory.saveEntries(normalized);
+  } else {
+    localStorage.setItem('speech_correction_memory_store', JSON.stringify(normalized));
+  }
+  speechCorrectionMemoryState.entries = normalized;
+  speechCorrectionMemoryState.loaded = true;
+}
+
+async function recordSpeechCorrectionMemory(observedText, intendedText, contextTerms = [], source = 'training_mismatch') {
+  const observed = String(observedText || '').trim();
+  const intended = String(intendedText || '').trim();
+  const normalizedObserved = normalizeSpeechMemoryText(observed);
+  const normalizedIntended = normalizeSpeechMemoryText(intended);
+  if (!normalizedObserved || !normalizedIntended || normalizedObserved === normalizedIntended) return false;
+
+  await loadSpeechCorrectionMemory();
+
+  const now = new Date().toISOString();
+  const context = Array.from(new Set(
+    (Array.isArray(contextTerms) ? contextTerms : [])
+      .map(term => String(term || '').trim())
+      .filter(Boolean)
+  ));
+  const nextEntries = [...speechCorrectionMemoryState.entries];
+  const existingIndex = nextEntries.findIndex((entry) =>
+    normalizeSpeechMemoryText(entry.observedText) === normalizedObserved
+    && normalizeSpeechMemoryText(entry.intendedText) === normalizedIntended
+  );
+
+  if (existingIndex >= 0) {
+    const existing = nextEntries[existingIndex];
+    nextEntries[existingIndex] = {
+      ...existing,
+      contextTerms: Array.from(new Set([...(existing.contextTerms || []), ...context])),
+      hitCount: Number(existing.hitCount || 0) + 1,
+      confirmCount: Number(existing.confirmCount || 0) + 1,
+      isEnabled: existing.isEnabled !== false,
+      source: existing.source || source,
+      updatedAt: now,
+    };
+  } else {
+    nextEntries.unshift({
+      id: 'speech-correction-' + Date.now() + '-' + Math.random().toString(36).slice(2),
+      observedText: observed,
+      intendedText: intended,
+      contextTerms: context,
+      hitCount: 1,
+      confirmCount: 1,
+      rejectCount: 0,
+      isEnabled: true,
+      source,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  await saveSpeechCorrectionMemory(nextEntries);
+  return true;
+}
+
+function rerenderSpeechMuscleMemorySection() {
+  const content = document.getElementById('content-speech-muscle-memory');
+  if (!content) return;
+  content.innerHTML = getSettingContent('speech-muscle-memory');
+}
+
+function bindDynamicSettingActions(root) {
+  root.onclick = event => {
+    const control = event.target.closest('[data-action]');
+    if (!control || !root.contains(control)) return;
+    const id = control.dataset.id;
+    switch (control.dataset.action) {
+      case 'speech-train': toggleSpeechMemoryTraining(id); break;
+      case 'speech-edit': openSpeechMemoryEditor(id); break;
+      case 'speech-toggle': handleSpeechMemoryToggle(id); break;
+      case 'speech-delete': handleSpeechMemoryDelete(id); break;
+      case 'edit-custom-prompt': showEditCustomPrompt(id); break;
+      case 'delete-custom-prompt': deleteCustomPrompt(id); break;
+      case 'select-audio-preset': selectAudioPreset(id); break;
+    }
+  };
+}
+
+async function loadSettings() {
+  try {
+    const res = requireOk(await homeFetch('/api/config'));
+    const data = await res.json();
+    if (!data || typeof data !== 'object' || Array.isArray(data)
+      || !data.ui_config || !data.audio_config || !data.reply_config
+      || !data.custom_prompt_config || !data.shortcut_config) {
+      throw new Error('invalid_config_payload');
+    }
+    appConfig = data;
+    // Apply saved theme
+    const savedTheme = (appConfig.ui_config || {}).theme || 'dark';
+    applyTheme(savedTheme);
+  } catch(e) {
+    appConfig = null;
+    document.getElementById('settings-list').innerHTML = `<div class="card empty-state">
+      <div>配置加载失败，未开放任何写入控件。</div>
+      <button class="btn btn-primary" style="margin-top:10px;" onclick="loadSettings()">重新加载</button>
+    </div>`;
+    return;
+  }
+  renderSettings();
+}
+
+function renderSettings() {
+  const el = document.getElementById('settings-list');
+  el.innerHTML = settingsItems.map((s, i) => {
+    const border = i < settingsItems.length - 1 ? 'border-bottom:1px solid var(--border);' : '';
+    const p = settingIconPalette[s.tone] || settingIconPalette.blue;
+    const iconStyle = `--setting-icon-bg-light:${p.lightBg};--setting-icon-color-light:${p.lightText};--setting-icon-bg-dark:${p.darkBg};--setting-icon-color-dark:${p.darkText};`;
+    return `<div class="setting-item" style="${border}">
+      <div class="setting-row" onclick="toggleSetting('${s.id}')">
+        <div class="setting-main">
+          <div class="setting-icon" style="${iconStyle}">${s.icon}</div>
+          <div class="setting-meta">
+            <div class="setting-name">${s.name}</div>
+            <div class="setting-desc">${s.desc}</div>
+          </div>
+        </div>
+        <div class="setting-arrow" id="arrow-${s.id}">></div>
+      </div>
+      <div class="setting-content" id="content-${s.id}">${getSettingContent(s.id)}</div>
+    </div>`;
+  }).join('');
+  bindDynamicSettingActions(el);
+}
+
+function toggleSetting(id) {
+  if (id === 'ghost-suggestions') {
+    openGhostSuggestionSettings();
+    return;
+  }
+  const content = document.getElementById('content-' + id);
+  const isOpen = content.classList.contains('open');
+  // Close all others
+  document.querySelectorAll('.setting-content').forEach(c => c.classList.remove('open'));
+  if (!isOpen) {
+    content.classList.add('open');
+    if (id === 'audio') loadAudioPresets();
+    if (id === 'speech-muscle-memory') loadSpeechMuscleMemory();
+  }
+}
+
+function openGhostSuggestionSettings() {
+  const bridge = window.iterateGhostSuggestionSettings;
+  if (bridge && bridge.available && typeof bridge.open === 'function') {
+    bridge.open();
+    return;
+  }
+  showToast('请在 iOS 应用内管理幽灵补全词表');
+}
+
+function getSettingContent(id) {
+  const cfg = appConfig || {};
+  const ui = cfg.ui_config || {};
+  const fontCfg = ui.font_config || {};
+  const winCfg = ui.window_config || {};
+  const audio = cfg.audio_config || {};
+  const reply = cfg.reply_config || {};
+  const shortcuts = cfg.shortcut_config || {};
+  const customPrompts = cfg.custom_prompt_config || {};
+
+  switch(id) {
+    case 'theme':
+      return `<div class="sub-section">
+        <div class="toggle-row"><span class="toggle-label">当前主题</span><span style="font-size:12px;color:var(--accent);">${ui.theme || 'dark'}</span></div>
+        <select onchange="handleSetTheme(this.value)">
+          <option value="dark" ${ui.theme==='dark'?'selected':''}>深色</option>
+          <option value="light" ${ui.theme==='light'?'selected':''}>浅色</option>
+        </select>
+      </div>`;
+    case 'font': {
+      const ff = fontCfg.font_family || 'system';
+      const fs = fontCfg.font_size || 'medium';
+      const customFF = fontCfg.custom_font_family || '';
+      return `<div class="sub-section">
+        <div class="toggle-row"><span class="toggle-label">字体系列</span></div>
+        <select onchange="handleFontFamily(this.value)">
+          <option value="system" ${ff==='system'?'selected':''}>系统默认</option>
+          <option value="microsoft-yahei" ${ff==='microsoft-yahei'?'selected':''}>微软雅黑</option>
+          <option value="pingfang" ${ff==='pingfang'?'selected':''}>苹方</option>
+          <option value="source-han-sans" ${ff==='source-han-sans'?'selected':''}>思源黑体</option>
+          <option value="jetbrains-mono" ${ff==='jetbrains-mono'?'selected':''}>JetBrains Mono</option>
+          <option value="custom" ${ff==='custom'?'selected':''}>自定义</option>
+        </select>
+        <div id="custom-font-input" style="margin-top:8px;${ff==='custom'?'':'display:none;'}">
+          <input type="text" value="${escapeHtml(customFF)}" placeholder="自定义字体CSS值" onchange="handleCustomFont(this.value)">
+        </div>
+        <div class="toggle-row" style="margin-top:10px;"><span class="toggle-label">字体大小</span><span style="font-size:12px;color:var(--accent);" id="font-size-label">${{small:'小',medium:'中',large:'大',xlarge:'特大'}[fs]||'中'}</span></div>
+        <input type="range" min="0" max="3" step="1" value="${{small:0,medium:1,large:2,xlarge:3}[fs]||1}" style="width:100%;" oninput="document.getElementById('font-size-label').textContent=['小','中','大','特大'][this.value]" onchange="handleFontSize(['small','medium','large','xlarge'][this.value])">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);padding:0 2px;"><span>小</span><span>中</span><span>大</span><span>特大</span></div>
+        <button class="btn btn-secondary" style="width:100%;margin-top:10px;" onclick="handleResetFont()">重置字体</button>
+      </div>`;
+    }
+    case 'reply':
+      return `<div class="sub-section">
+        <div class="toggle-row">
+          <div><div class="toggle-label">启用继续回复</div><div class="toggle-desc">启用后将显示继续按钮</div></div>
+          <div class="toggle-switch ${reply.enable_continue_reply?'on':''}" onclick="handleToggle(this,'reply_config','enable_continue_reply')"></div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="toggle-label" style="margin-bottom:4px;">继续提示词</div>
+          <input type="text" value="${escapeHtml(reply.continue_prompt||'请按照最佳实践继续')}" placeholder="继续提示词" onchange="handleReplyPrompt(this.value)">
+        </div>
+        <div style="margin-top:10px;">
+          <div class="toggle-row"><span class="toggle-label">自动继续阈值</span><span style="font-size:12px;color:var(--accent);">${reply.auto_continue_threshold||1000} 字</span></div>
+          <input type="range" min="500" max="5000" step="100" value="${reply.auto_continue_threshold||1000}" style="width:100%;" oninput="this.previousElementSibling.querySelector('span:last-child').textContent=this.value+' 字'" onchange="handleReplyThreshold(parseInt(this.value))">
+        </div>
+      </div>`;
+    case 'speech-muscle-memory': {
+      if (!speechMuscleMemoryState.loaded) {
+        return `<div class="sub-section">
+          <div class="info-text">正在加载语音训练词条...</div>
+        </div>`;
+      }
+      const memoryEntries = speechMuscleMemoryState.entries || [];
+      const activeCount = memoryEntries.filter(entry => entry.isEnabled && entry.trainingCount >= 4).length;
+      const memoryRows = memoryEntries.length > 0
+        ? memoryEntries.map(entry => `
+            <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                <div style="min-width:0;flex:1;">
+                  <div style="font-size:13px;font-weight:600;word-break:break-word;">${escapeHtml(entry.spokenPhrase)}</div>
+                  <div style="font-size:11px;color:var(--text3);margin-top:4px;word-break:break-word;">输出：${escapeHtml(entry.outputText)}</div>
+                  <div style="font-size:11px;color:${entry.trainingCount >= 4 ? 'var(--accent)' : 'var(--text3)'};margin-top:4px;">训练 ${entry.trainingCount}/4${entry.isEnabled ? '' : ' · 已禁用'}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+                  <button class="btn btn-secondary" data-action="speech-train" data-id="${escapeHtml(entry.id)}" style="padding:4px 8px;font-size:11px;">${speechTrainingUIState.activeEntryId === entry.id ? '结束训练' : '说一句训练'}</button>
+                  <button class="btn btn-secondary" data-action="speech-edit" data-id="${escapeHtml(entry.id)}" style="padding:4px 8px;font-size:11px;">编辑</button>
+                  <button class="btn btn-secondary" data-action="speech-toggle" data-id="${escapeHtml(entry.id)}" style="padding:4px 8px;font-size:11px;">${entry.isEnabled ? '停用' : '启用'}</button>
+                  <button class="btn btn-secondary" data-action="speech-delete" data-id="${escapeHtml(entry.id)}" style="padding:4px 8px;font-size:11px;color:var(--red);">删除</button>
+                </div>
+              </div>
+            </div>
+          `).join('')
+        : '<div class="info-text">还没有训练词条。先新增一条常说短语和固定输出。</div>';
+      return `<div class="sub-section">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">语音肌肉记忆库</div>
+            <div class="toggle-desc">为常说短语配置固定输出，适合公文常用词和命令短语。</div>
+          </div>
+        </div>
+        <div class="info-text" style="margin-top:8px;">已激活 ${activeCount} 条，共 ${memoryEntries.length} 条。训练满 4 次后自动进入激活状态。</div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="openSpeechMemoryEditor()">新增短语</button>
+          <button class="btn btn-secondary" style="flex:1;" onclick="loadSpeechMuscleMemory(true)">刷新</button>
+        </div>
+        <div style="margin-top:10px;">${memoryRows}</div>
+        <div id="speech-memory-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.72);z-index:1000;padding:20px;overflow-y:auto;">
+          <div style="background:var(--card);border-radius:12px;padding:16px;max-width:520px;margin:20px auto;">
+            <div style="font-size:16px;font-weight:600;margin-bottom:12px;" id="speech-memory-modal-title">新增短语</div>
+            <div style="margin-bottom:8px;">
+              <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">你会说的话 *</label>
+              <input type="text" id="speech-memory-spoken" placeholder="例如：好的收到">
+            </div>
+            <div style="margin-bottom:8px;">
+              <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">固定输出 *</label>
+              <input type="text" id="speech-memory-output" placeholder="例如：OK，这件事我来处理">
+            </div>
+            <div class="info-text" style="margin-bottom:12px;">只有真实语音输入命中 final 结果时才会累计训练次数，达到 4 次后自动激活。</div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-secondary" style="flex:1;" onclick="closeSpeechMemoryEditor()">取消</button>
+              <button class="btn btn-primary" style="flex:1;" onclick="saveSpeechMemoryEditor()">保存</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+    case 'window':
+      return `<div class="sub-section">
+        <div class="toggle-row">
+          <div><div class="toggle-label">总在最前</div><div class="toggle-desc">窗口始终保持在其他应用之上</div></div>
+          <div class="toggle-switch ${ui.always_on_top?'on':''}" onclick="handleToggle(this,'ui_config','always_on_top')"></div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="toggle-row"><span class="toggle-label">窗口模式</span><span style="font-size:12px;color:var(--accent);">${winCfg.fixed?'固定大小':'自由拉伸'}</span></div>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <button class="btn ${!winCfg.fixed?'btn-primary':'btn-secondary'}" style="flex:1;" onclick="handleWindowMode(false)">自由拉伸</button>
+            <button class="btn ${winCfg.fixed?'btn-primary':'btn-secondary'}" style="flex:1;" onclick="handleWindowMode(true)">固定大小</button>
+          </div>
+        </div>
+        <div class="info-text" style="margin-top:8px;">当前尺寸：${winCfg.fixed ? (winCfg.fixed_width||600) : (winCfg.free_width||600)} × ${winCfg.fixed ? (winCfg.fixed_height||800) : (winCfg.free_height||800)} px</div>
+        <div class="info-text">限制：宽 ${winCfg.min_width||600}-${winCfg.max_width||1500}，高 ${winCfg.min_height||400}-${winCfg.max_height||1000}</div>
+      </div>`;
+    case 'audio':
+      return `<div class="sub-section">
+        <div class="toggle-row">
+          <div><div class="toggle-label">音频通知</div><div class="toggle-desc">MCP工具触发时播放提示音</div></div>
+          <div class="toggle-switch ${audio.notification_enabled?'on':''}" onclick="handleToggle(this,'audio_config','notification_enabled')"></div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="toggle-label" style="margin-bottom:4px;">预设音效</div>
+          <div id="audio-presets" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+            <div class="info-text">加载中...</div>
+          </div>
+          <div class="toggle-label" style="margin-bottom:4px;">自定义音效</div>
+          <div style="display:flex;gap:6px;">
+            <input type="text" id="audio-custom-url" value="${escapeHtml(audio.custom_url||'')}" placeholder="音效文件路径或URL" style="flex:1;">
+            <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px;white-space:nowrap;" onclick="handleAudioUrl(document.getElementById('audio-custom-url').value)">保存</button>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button class="btn btn-primary" style="flex:1;font-size:12px;" onclick="testAudio()">试听当前音效</button>
+          </div>
+          <div class="info-text" style="margin-top:6px;">当前: ${escapeHtml(audio.custom_url || '默认音效')}</div>
+        </div>
+      </div>`;
+    case 'iterate':
+      return `<div class="sub-section">
+        <div class="info-text">手机远程控制状态</div>
+        <div class="toggle-row"><span class="toggle-label">Bridge Server</span><span style="font-size:12px;color:var(--accent);">运行中</span></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="handleShowWindow()">打开桌面主窗口</button>
+      </div>`;
+    case 'custom-prompt': {
+      const allPrompts = customPrompts.prompts || [];
+      const promptList = allPrompts.length > 0
+        ? allPrompts.map(p => {
+            const typeLabel = p.type === 'conditional' ? '上下文追加' : '快捷模板';
+            const stateIcon = p.type === 'conditional' ? (p.current_state ? '●' : '○') : '▸';
+            const activeClass = p.is_active === false ? 'opacity:0.5;' : '';
+            const activeTag = p.is_active === false ? '<span style="font-size:10px;color:var(--orange);padding:1px 4px;background:rgba(245,158,11,0.15);border-radius:3px;margin-left:4px;">已禁用</span>' : '';
+            return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);${activeClass}">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:500;">${stateIcon} ${escapeHtml(p.name)}${activeTag}</div>
+                <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.description || p.content || (p.type==='conditional' ? p.condition_text||'' : ''))}</div>
+                <span style="font-size:10px;color:var(--text3);padding:1px 4px;background:var(--bg3);border-radius:3px;">${typeLabel}</span>
+              </div>
+              <div style="display:flex;gap:4px;margin-left:8px;flex-shrink:0;">
+                <button data-action="edit-custom-prompt" data-id="${escapeHtml(p.id)}" style="background:none;border:none;color:var(--text2);cursor:pointer;padding:4px;"><svg width="14" height="14" viewBox="0 0 32 32" fill="currentColor"><path d="M2 26h28v2H2zM25.4 9c.8-.8.8-2 0-2.8l-3.6-3.6c-.8-.8-2-.8-2.8 0l-15 15V24h6.4l15-15zm-5-5L24 7.6l-3 3L17.4 7l3-3zM6 22v-3.6l10-10L19.6 12l-10 10H6z"/></svg></button>
+                <button data-action="delete-custom-prompt" data-id="${escapeHtml(p.id)}" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;"><svg width="14" height="14" viewBox="0 0 32 32" fill="currentColor"><path d="M12 12h2v12h-2zm6 0h2v12h-2z"/><path d="M4 6v2h2v20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8h2V6zm4 22V8h16v20zm4-26h8v2h-8z"/></svg></button>
+              </div>
+            </div>`;
+          }).join('')
+        : '<div class="info-text">暂无快捷模板</div>';
+      return `<div class="sub-section">
+        <div class="toggle-row">
+          <div><div class="toggle-label">启用快捷模板</div><div class="toggle-desc">启用后在输入框显示快捷模板</div></div>
+          <div class="toggle-switch ${customPrompts.enabled?'on':''}" onclick="handleToggleCustomPrompt(this)"></div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="toggle-row">
+            <span class="toggle-label">已创建 ${allPrompts.length} 个模板</span>
+            <button class="btn btn-primary" style="font-size:12px;padding:4px 10px;" onclick="showAddCustomPrompt()">+ 添加模板</button>
+          </div>
+          <div style="max-height:300px;overflow-y:auto;margin-top:8px;">${promptList}</div>
+        </div>
+      </div>
+      <!-- 添加/编辑模板模态框 -->
+      <div id="custom-prompt-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;padding:20px;overflow-y:auto;">
+        <div style="background:var(--card);border-radius:12px;padding:16px;max-width:500px;margin:20px auto;">
+          <div style="font-size:16px;font-weight:600;margin-bottom:12px;" id="custom-prompt-modal-title">添加快捷模板</div>
+          <input type="hidden" id="cp-edit-id">
+          <div style="margin-bottom:8px;">
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">名称 *</label>
+            <input type="text" id="cp-name" placeholder="模板名称">
+          </div>
+          <div style="margin-bottom:8px;">
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">描述</label>
+            <input type="text" id="cp-desc" placeholder="简短描述用途">
+          </div>
+          <div style="margin-bottom:8px;">
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">类型</label>
+            <select id="cp-type" onchange="toggleCPTypeFields()">
+              <option value="normal">快捷模板</option>
+              <option value="conditional">上下文追加</option>
+            </select>
+          </div>
+          <div id="cp-normal-fields">
+            <div style="margin-bottom:8px;">
+              <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">内容</label>
+              <textarea id="cp-content" rows="4" placeholder="模板内容（留空可清空输入框）" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:13px;resize:vertical;"></textarea>
+            </div>
+          </div>
+          <div id="cp-conditional-fields" style="display:none;">
+            <div style="margin-bottom:8px;">
+              <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">条件描述 *</label>
+              <input type="text" id="cp-condition" placeholder="例如：是否使用TypeScript">
+            </div>
+            <div style="margin-bottom:8px;">
+              <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">开启时的内容</label>
+              <textarea id="cp-template-true" rows="2" placeholder="例如：✔️需要使用TypeScript" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:13px;resize:vertical;"></textarea>
+            </div>
+            <div style="margin-bottom:8px;">
+              <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">关闭时的内容</label>
+              <textarea id="cp-template-false" rows="2" placeholder="例如：❌切记，不要使用TypeScript" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:13px;resize:vertical;"></textarea>
+            </div>
+            <div class="toggle-row" style="margin-bottom:8px;">
+              <span class="toggle-label">当前状态</span>
+              <div class="toggle-switch" id="cp-state-toggle" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div class="toggle-row" style="margin-bottom:12px;">
+            <span class="toggle-label">是否启用</span>
+            <div class="toggle-switch on" id="cp-active-toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary" style="flex:1;" onclick="closeCustomPromptModal()">取消</button>
+            <button class="btn btn-primary" style="flex:1;" onclick="saveCustomPrompt()">保存</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    case 'prompt-library':
+      return `<div class="sub-section">
+        <div class="info-text" style="margin-bottom:8px;">管理和导入提示词集合。</div>
+        <button class="btn btn-primary" style="width:100%;" onclick="switchTab('prompts')">查看提示词库</button>
+        <button class="btn btn-secondary" style="width:100%;margin-top:6px;" onclick="loadPromptLibrary()">刷新提示词库</button>
+      </div>`;
+    case 'shortcuts': {
+      const sc = shortcuts.shortcuts || {};
+      const bindingsList = Object.entries(sc).map(([k,b]) => {
+        const combo = formatShortcutKey(b.key_combination);
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div style="font-size:13px;font-weight:500;">${escapeHtml(b.name)}</div>
+            <div style="font-size:11px;color:var(--text3);">${escapeHtml(b.description||'')}</div>
+          </div>
+          <span style="font-size:11px;padding:3px 8px;background:var(--bg3);border-radius:4px;font-family:monospace;white-space:nowrap;">${escapeHtml(combo)}</span>
+        </div>`;
+      }).join('');
+      return `<div class="sub-section">
+        <div class="toggle-row">
+          <div><div class="toggle-label">全局快捷键</div><div class="toggle-desc">启用/禁用全局快捷键</div></div>
+          <div class="toggle-switch ${shortcuts.global_enabled?'on':''}" onclick="handleToggle(this,'shortcut_config','global_enabled')"></div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="toggle-label" style="margin-bottom:4px;">快捷键列表</div>
+          <div style="max-height:200px;overflow-y:auto;">${bindingsList || '<div class="info-text">暂无快捷键</div>'}</div>
+        </div>
+        <div class="info-text" style="margin-top:8px;">编辑快捷键请在桌面端操作</div>
+      </div>`;
+    }
+    case 'config':
+      return `<div class="sub-section">
+        <button class="btn btn-primary" style="width:100%;" onclick="reloadConfig()">刷新桌面端配置</button>
+        <div class="info-text" style="margin-top:8px;">重新读取桌面端当前生效的设置。</div>
+      </div>`;
+    case 'version':
+      return `<div class="sub-section">
+        <div class="toggle-row"><span class="toggle-label">当前版本</span><span style="font-size:13px;font-weight:600;color:var(--accent);" id="setting-version">加载中...</span></div>
+        <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="checkVersion()">刷新版本信息</button>
+      </div>`;
+    default:
+      return '<div class="info-text">暂无详细设置</div>';
+  }
+}
+
+// Standalone handler functions (avoid inline JSON in onclick attributes)
+async function handleSetTheme(v) {
+  if (await updateConfig('ui_config', {theme:v})) applyTheme(v);
+}
+function applyTheme(theme) {
+  const isLight = (theme === 'light');
+  document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+}
+function handleFontFamily(v) {
+  updateConfig('ui_config', {font_config:{font_family:v}});
+  const el = document.getElementById('custom-font-input');
+  if (el) el.style.display = v === 'custom' ? '' : 'none';
+}
+function handleCustomFont(v) {
+  updateConfig('ui_config', {font_config:{custom_font_family:v}});
+}
+function handleFontSize(v) {
+  updateConfig('ui_config', {font_config:{font_size:v}});
+}
+function handleResetFont() {
+  updateConfig('ui_config', {font_config:{font_family:'system', font_size:'medium', custom_font_family:''}});
+}
+function handleReplyPrompt(v) {
+  updateConfig('reply_config', {continue_prompt:v});
+}
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function normalizeSpeechMemoryText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
+}
+function openSpeechMemoryEditor(id) {
+  const entry = id ? speechMuscleMemoryState.entries.find(item => item.id === id) : null;
+  speechMuscleMemoryEditorState.editingId = entry ? entry.id : null;
+  const title = document.getElementById('speech-memory-modal-title');
+  const spokenInput = document.getElementById('speech-memory-spoken');
+  const outputInput = document.getElementById('speech-memory-output');
+  const modal = document.getElementById('speech-memory-modal');
+  if (!title || !spokenInput || !outputInput || !modal) return;
+  title.textContent = entry ? '编辑短语' : '新增短语';
+  spokenInput.value = entry ? entry.spokenPhrase : '';
+  outputInput.value = entry ? entry.outputText : '';
+  modal.style.display = '';
+  setTimeout(() => spokenInput.focus(), 0);
+}
+
+function closeSpeechMemoryEditor() {
+  speechMuscleMemoryEditorState.editingId = null;
+  const modal = document.getElementById('speech-memory-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function saveSpeechMemoryEditor() {
+  const spokenInput = document.getElementById('speech-memory-spoken');
+  const outputInput = document.getElementById('speech-memory-output');
+  if (!spokenInput || !outputInput) return;
+  const trimmedSpoken = spokenInput.value.trim();
+  const trimmedOutput = outputInput.value.trim();
+  if (!trimmedSpoken) { showToast('短语不能为空'); return; }
+  if (!trimmedOutput) { showToast('输出不能为空'); return; }
+
+  const editingId = speechMuscleMemoryEditorState.editingId;
+  const nextEntries = editingId
+    ? speechMuscleMemoryState.entries.map(item =>
+        item.id === editingId ? { ...item, spokenPhrase: trimmedSpoken, outputText: trimmedOutput } : item
+      )
+    : [
+        {
+          id: 'speech-memory-' + Date.now() + '-' + Math.random().toString(36).slice(2),
+          spokenPhrase: trimmedSpoken,
+          outputText: trimmedOutput,
+          trainingCount: 0,
+          isEnabled: true,
+        },
+        ...speechMuscleMemoryState.entries,
+      ];
+
+  try {
+    await saveSpeechMuscleMemory(nextEntries);
+    closeSpeechMemoryEditor();
+    showToast(editingId ? '已更新语音短语' : '已新增语音短语');
+  } catch (error) {
+    showToast('语音短语保存失败');
+  }
+}
+
+async function handleSpeechMemoryEdit(id) {
+  const entry = speechMuscleMemoryState.entries.find(item => item.id === id);
+  if (!entry) return;
+  openSpeechMemoryEditor(entry.id);
+}
+async function toggleSpeechMemoryTraining(id) {
+  const entry = speechMuscleMemoryState.entries.find(item => item.id === id);
+  if (!entry) return;
+  if (!(window.iterateSpeechTraining && window.iterateSpeechTraining.available)) {
+    showToast('当前页面还没有接上原生语音训练能力');
+    return;
+  }
+  if (speechTrainingUIState.activeEntryId && speechTrainingUIState.activeEntryId !== id) {
+    showToast('请先结束当前训练');
+    return;
+  }
+  try {
+    if (speechTrainingUIState.activeEntryId === id) {
+      const transcript = await window.iterateSpeechTraining.stopRecording();
+      speechTrainingUIState.activeEntryId = null;
+      rerenderSpeechMuscleMemorySection();
+      const normalizedTranscript = normalizeSpeechMemoryText(transcript);
+      const normalizedPhrase = normalizeSpeechMemoryText(entry.spokenPhrase);
+      if (!normalizedTranscript) {
+        showToast('没有识别到有效内容');
+        return;
+      }
+      if (normalizedTranscript !== normalizedPhrase) {
+        const recorded = await recordSpeechCorrectionMemory(
+          transcript,
+          entry.spokenPhrase,
+          [entry.spokenPhrase, entry.outputText],
+          'training_mismatch'
+        );
+        showToast(recorded
+          ? ('已记录纠错：' + transcript + ' → ' + entry.spokenPhrase)
+          : ('识别到：' + transcript + '，未命中该短语'));
+        return;
+      }
+      const nextEntries = speechMuscleMemoryState.entries.map(item =>
+        item.id === id ? { ...item, trainingCount: Number(item.trainingCount || 0) + 1 } : item
+      );
+      await saveSpeechMuscleMemory(nextEntries);
+      showToast('训练已记录：' + transcript);
+      return;
+    }
+    await window.iterateSpeechTraining.startRecording([entry.spokenPhrase, entry.outputText]);
+    speechTrainingUIState.activeEntryId = id;
+    rerenderSpeechMuscleMemorySection();
+    showToast('正在录入语音：' + entry.spokenPhrase);
+  } catch (error) {
+    speechTrainingUIState.activeEntryId = null;
+    rerenderSpeechMuscleMemorySection();
+    showToast(typeof error === 'string' ? error : '语音训练失败');
+  }
+}
+async function handleSpeechMemoryToggle(id) {
+  const nextEntries = speechMuscleMemoryState.entries.map(item =>
+    item.id === id ? { ...item, isEnabled: !item.isEnabled } : item
+  );
+  try {
+    await saveSpeechMuscleMemory(nextEntries);
+    showToast('状态已更新');
+  } catch (error) {
+    showToast('状态更新失败');
+  }
+}
+async function handleSpeechMemoryDelete(id) {
+  if (!confirm('删除这条语音短语？')) return;
+  const nextEntries = speechMuscleMemoryState.entries.filter(item => item.id !== id);
+  try {
+    await saveSpeechMuscleMemory(nextEntries);
+    showToast('已删除');
+  } catch (error) {
+    showToast('删除失败');
+  }
+}
+function handleReplyThreshold(v) {
+  updateConfig('reply_config', {auto_continue_threshold:Number(v)});
+}
+function handleWindowMode(fixed) {
+  updateConfig('ui_config', {window_config:{fixed:fixed}});
+}
+function handleAudioUrl(v) {
+  return updateConfig('audio_config', {custom_url:v});
+}
+function handleToggle(el, section, key) {
+  const nextEnabled = !el.classList.contains('on');
+  const patch = {};
+  patch[key] = nextEnabled;
+  updateConfig(section, patch).then(ok => {
+    if (ok) el.classList.toggle('on', nextEnabled);
+  });
+}
+function handleToggleCustomPrompt(el) {
+  const nextEnabled = !el.classList.contains('on');
+  updateConfig('custom_prompt_config', {enabled:nextEnabled}).then(ok => {
+    if (ok) el.classList.toggle('on', nextEnabled);
+  });
+}
+function handleShowWindow() {
+  homeFetch('/api/show-window').then(requireOk).then(r=>r.json()).then(data=>{
+    if (!data.ok) throw new Error(data.error || '打开失败');
+    showToast('桌面窗口已打开');
+  }).catch(()=>showToast('打开失败'));
+}
+function formatShortcutKey(kc) {
+  if (!kc || !kc.key) return '未设置';
+  const parts = [];
+  if (kc.meta) parts.push('⌘');
+  if (kc.ctrl) parts.push('Ctrl');
+  if (kc.alt) parts.push('⌥');
+  if (kc.shift) parts.push('⇧');
+  parts.push(kc.key);
+  return parts.join('+');
+}
+// Audio presets
+function loadAudioPresets() {
+  homeFetch('/api/audio-assets').then(requireOk).then(r=>r.json()).then(d=>{
+    const el = document.getElementById('audio-presets');
+    if (!el) return;
+    const assets = d.assets || [];
+    if (assets.length === 0) { el.innerHTML = '<div class="info-text">无可用预设音效</div>'; return; }
+    const currentUrl = ((appConfig||{}).audio_config||{}).custom_url || '';
+    const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    el.innerHTML = assets.map(a => {
+      const active = currentUrl === a.id;
+      return `<button class="btn ${active?'btn-primary':'btn-secondary'}" data-action="select-audio-preset" data-id="${esc(a.id)}" style="font-size:11px;padding:4px 8px;">${esc(a.name)}</button>`;
+    }).join('');
+  }).catch(()=>{
+    const el = document.getElementById('audio-presets');
+    if (el) el.innerHTML = '<div class="info-text">加载失败</div>';
+  });
+}
+async function selectAudioPreset(id) {
+  if (!await handleAudioUrl(id)) return;
+  loadAudioPresets();
+  await testAudio();
+}
+function testAudio() {
+  homeFetch('/api/test-audio',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).then(requireOk).then(r=>r.json()).then(d=>{
+    if (d.ok) showToast('正在播放');
+    else showToast('播放失败: '+(d.error||''));
+  }).catch(()=>showToast('播放失败'));
+}
+
+// Custom Prompt CRUD
+function toggleCPTypeFields() {
+  const type = document.getElementById('cp-type').value;
+  document.getElementById('cp-normal-fields').style.display = type === 'normal' ? '' : 'none';
+  document.getElementById('cp-conditional-fields').style.display = type === 'conditional' ? '' : 'none';
+}
+function showAddCustomPrompt() {
+  document.getElementById('custom-prompt-modal-title').textContent = '添加快捷模板';
+  document.getElementById('cp-edit-id').value = '';
+  document.getElementById('cp-name').value = '';
+  document.getElementById('cp-desc').value = '';
+  document.getElementById('cp-type').value = 'normal';
+  document.getElementById('cp-content').value = '';
+  document.getElementById('cp-condition').value = '';
+  document.getElementById('cp-template-true').value = '';
+  document.getElementById('cp-template-false').value = '';
+  document.getElementById('cp-state-toggle').classList.remove('on');
+  document.getElementById('cp-active-toggle').classList.add('on');
+  toggleCPTypeFields();
+  document.getElementById('custom-prompt-modal').style.display = '';
+}
+function showEditCustomPrompt(id) {
+  const prompts = ((appConfig||{}).custom_prompt_config||{}).prompts || [];
+  const p = prompts.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('custom-prompt-modal-title').textContent = '编辑快捷模板';
+  document.getElementById('cp-edit-id').value = p.id;
+  document.getElementById('cp-name').value = p.name || '';
+  document.getElementById('cp-desc').value = p.description || '';
+  document.getElementById('cp-type').value = p.type || 'normal';
+  document.getElementById('cp-content').value = p.content || '';
+  document.getElementById('cp-condition').value = p.condition_text || '';
+  document.getElementById('cp-template-true').value = p.template_true || '';
+  document.getElementById('cp-template-false').value = p.template_false || '';
+  const stateToggle = document.getElementById('cp-state-toggle');
+  p.current_state ? stateToggle.classList.add('on') : stateToggle.classList.remove('on');
+  const activeToggle = document.getElementById('cp-active-toggle');
+  (p.is_active !== false) ? activeToggle.classList.add('on') : activeToggle.classList.remove('on');
+  toggleCPTypeFields();
+  document.getElementById('custom-prompt-modal').style.display = '';
+}
+function closeCustomPromptModal() {
+  document.getElementById('custom-prompt-modal').style.display = 'none';
+}
+async function saveCustomPrompt() {
+  const name = document.getElementById('cp-name').value.trim();
+  if (!name) { showToast('请填写名称'); return; }
+  const editId = document.getElementById('cp-edit-id').value;
+  const type = document.getElementById('cp-type').value;
+  const isConditional = type === 'conditional';
+  if (isConditional && !document.getElementById('cp-condition').value.trim()) { showToast('请填写条件描述'); return; }
+
+  const prompt = {
+    id: editId || ('custom_' + Date.now()),
+    name: name,
+    content: document.getElementById('cp-content').value,
+    description: document.getElementById('cp-desc').value.trim() || undefined,
+    type: type,
+    condition_text: isConditional ? document.getElementById('cp-condition').value.trim() : undefined,
+    template_true: isConditional ? document.getElementById('cp-template-true').value.trim() : undefined,
+    template_false: isConditional ? document.getElementById('cp-template-false').value.trim() : undefined,
+    current_state: isConditional ? document.getElementById('cp-state-toggle').classList.contains('on') : undefined,
+    is_active: document.getElementById('cp-active-toggle').classList.contains('on'),
+    sort_order: 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const cp = Object.assign({}, (appConfig||{}).custom_prompt_config||{});
+  const prompts = (cp.prompts || []).map(p => Object.assign({}, p));
+  if (editId) {
+    const idx = prompts.findIndex(p => p.id === editId);
+    if (idx !== -1) { prompt.created_at = prompts[idx].created_at; prompt.sort_order = prompts[idx].sort_order; prompts[idx] = prompt; }
+  } else {
+    prompt.sort_order = prompts.length + 1;
+    prompts.push(prompt);
+  }
+  if (!await updateConfig('custom_prompt_config', {prompts})) return;
+  closeCustomPromptModal();
+  renderSettings();
+  showToast(editId ? '模板已更新' : '模板已添加');
+}
+async function deleteCustomPrompt(id) {
+  if (!confirm('确定要删除这个模板吗？')) return;
+  const prompts = (((appConfig||{}).custom_prompt_config||{}).prompts || []).filter(p => p.id !== id);
+  if (!await updateConfig('custom_prompt_config', {prompts})) return;
+  renderSettings();
+  showToast('模板已删除');
+}
+
+async function loadPromptLibrary() {
+  if (await loadPrompts()) {
+    showToast('已刷新 '+promptLibrary.length+' 个提示词');
+  } else {
+    showToast('刷新失败');
+  }
+}
+
+async function updateConfig(key, value) {
+  const body = {};
+  body[key] = value;
+  try {
+    requireOk(await homeFetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }));
+  } catch(e) {
+    showToast('保存失败');
+    return false;
+  }
+
+    try {
+      const res = requireOk(await homeFetch('/api/config'));
+    const data = await res.json();
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('invalid_config_payload');
+    appConfig = data;
+    showToast('设置已保存');
+  } catch(e) {
+    showToast('设置已保存，但状态刷新失败');
+  }
+  return true;
+}
+
+async function reloadConfig() {
+  try {
+    const res = requireOk(await homeFetch('/api/config'));
+    const data = await res.json();
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('invalid_config_payload');
+    appConfig = data;
+    renderSettings();
+    showToast('配置已重新加载');
+  } catch(e) {
+    showToast('加载失败');
+  }
+}
+
+function checkVersion() {
+  homeFetch('/api/version').then(requireOk).then(r => r.json()).then(d => {
+    const el = document.getElementById('setting-version');
+    if (el) el.textContent = 'v' + d.version;
+    showToast('当前版本: v' + d.version);
+  }).catch(() => showToast('检查失败'));
+}
+
+// Apply theme on page load
+homeFetch('/api/config').then(requireOk).then(r => r.json()).then(cfg => {
+  const theme = (cfg.ui_config || {}).theme || 'dark';
+  applyTheme(theme);
+}).catch(() => {});
+</script>
+</body>
+</html>
