@@ -17,6 +17,7 @@
     "test:desktop-audio-privacy": "node --test scripts/desktop-audio-privacy.test.mjs",
     "test:desktop-web-push-security": "node --test scripts/desktop-bridge-web-push-security.test.mjs",
     "test:desktop-build-targets": "node --test scripts/desktop-build-rs-target-gating.test.mjs",
+    "test:desktop-community-activation": "node --test scripts/desktop-community-activation.test.mjs",
     "version:check": "node scripts/check-version-consistency.mjs",
     "tauri": "cargo tauri",
     "tauri:dev": "cargo tauri dev",
@@ -59,7 +60,7 @@
     "test:mcp-tool-icons": "node --test scripts/mcp-tool-icon-safelist.test.mjs",
     "test:component-mcp-tools": "node --test scripts/frontend-component-mcp-tools.test.mjs",
     "test:security-regression": "bash ./scripts/iterate-security-regression-check.sh",
-    "test:scripts": "pnpm run test:desktop-oss-readiness && pnpm run test:desktop-audio-privacy && pnpm run test:desktop-web-push-security && pnpm run test:desktop-build-targets && pnpm run test:bridge-daemon && pnpm run test:mermaid-security && pnpm run test:popup-discontiguous-selection && pnpm run test:release-signing && pnpm run test:health-loop && pnpm run test:health-daemon && pnpm run test:loop-contract-check && pnpm run test:mcp-tool-icons && pnpm run test:component-mcp-tools",
+    "test:scripts": "pnpm run test:desktop-oss-readiness && pnpm run test:desktop-audio-privacy && pnpm run test:desktop-web-push-security && pnpm run test:desktop-build-targets && pnpm run test:desktop-community-activation && pnpm run test:bridge-daemon && pnpm run test:mermaid-security && pnpm run test:popup-discontiguous-selection && pnpm run test:release-signing && pnpm run test:health-loop && pnpm run test:health-daemon && pnpm run test:loop-contract-check && pnpm run test:mcp-tool-icons && pnpm run test:component-mcp-tools",
     "test:rust": "cargo test",
     "test:ui": "cd src/frontend/test && vite",
     "test:ui:build": "cd src/frontend/test && vite build"

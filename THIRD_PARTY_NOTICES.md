@@ -6,7 +6,7 @@ remains subject to its own license.
 ## Upstream project
 
 - `imhuso/cunzhi` — MIT License. The original notice is preserved in
-  [LICENSE](LICENSE).
+  [LICENSE-UPSTREAM](LICENSE-UPSTREAM).
 
 ## Core frameworks
 

@@ -107,7 +107,20 @@ pub async fn get_app_info() -> Result<String, String> {
 
 #[tauri::command]
 pub async fn requires_activation_gate() -> bool {
-    cfg!(not(any(target_os = "android", target_os = "ios")))
+    activation_gate_required_for_build(
+        cfg!(not(any(target_os = "android", target_os = "ios"))),
+        option_env!("ITERATE_REQUIRE_ACTIVATION"),
+    )
+}
+
+fn activation_gate_required_for_build(is_desktop: bool, build_flag: Option<&str>) -> bool {
+    is_desktop
+        && build_flag.is_some_and(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
 }
 
 #[tauri::command]
@@ -4950,8 +4963,9 @@ pub async fn capture_screenshot() -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        apply_auto_checkpoint_enabled, attach_conversation_metadata, build_hui_snapshot,
-        collect_hui_source_paths_from, extract_user_response_content, find_hui_latest_anchor,
+        activation_gate_required_for_build, apply_auto_checkpoint_enabled,
+        attach_conversation_metadata, build_hui_snapshot, collect_hui_source_paths_from,
+        extract_user_response_content, find_hui_latest_anchor,
         is_current_project_conversation_file, is_hui_trigger, lookup_checkpoint_context,
         record_user_response_node, rollback_auto_checkpoint_enabled,
         send_response_to_route_channel, HuiSnapshotQuery, RecordedConversationNode,
@@ -4962,6 +4976,15 @@ mod tests {
     use serde_json::json;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn community_builds_skip_activation_unless_official_build_opts_in() {
+        assert!(!activation_gate_required_for_build(true, None));
+        assert!(!activation_gate_required_for_build(true, Some("0")));
+        assert!(activation_gate_required_for_build(true, Some("1")));
+        assert!(activation_gate_required_for_build(true, Some("TRUE")));
+        assert!(!activation_gate_required_for_build(false, Some("1")));
+    }
 
     #[test]
     fn auto_checkpoint_enabled_update_can_be_rolled_back_after_failed_save() {

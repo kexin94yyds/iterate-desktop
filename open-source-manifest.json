@@ -28,6 +28,7 @@
     "Entitlements.plist",
     "Info.plist",
     "LICENSE",
+    "LICENSE-UPSTREAM",
     "MCP_INSTALL.md",
     "MCP_SERVER.md",
     "Makefile",
@@ -219,6 +220,7 @@
     "Cargo.lock",
     "Cargo.toml",
     "LICENSE",
+    "LICENSE-UPSTREAM",
     "NOTICE",
     "PRIVACY.md",
     "README.md",
@@ -238,6 +240,7 @@
     "scripts/desktop-codex-live-source.test.mjs",
     "scripts/desktop-bridge-web-push-security.test.mjs",
     "scripts/desktop-build-rs-target-gating.test.mjs",
+    "scripts/desktop-community-activation.test.mjs",
     "scripts/desktop-ghost-suggestion-priority.test.mjs",
     "scripts/desktop-oss-readiness.test.mjs",
     "scripts/desktop-speech-frontend-ownership.test.mjs",
@@ -273,10 +276,16 @@
     "vscode-extension"
   ],
   "requiredLicenseNotices": [
-    "Copyright (c) 2026 kexin94yyds",
+    "Copyright (c) 2026 kexin94yyds"
+  ],
+  "requiredUpstreamLicenseNotices": [
     "Copyright (c) 2025 imshuo",
     "Based on cunzhi (https://github.com/imhuso/cunzhi)",
     "Copyright (c) 2024 imhuso"
   ],
+  "requiredLicenseDigests": {
+    "LICENSE": "71cabcd1496fbb0a40166e0b55814e45ef509fd116e106c38dba81cd36a1f16d",
+    "LICENSE-UPSTREAM": "ac18099706256975b7f8de0e88506072618f2a05ef422f1974956040e31508ab"
+  },
   "maxFileBytes": 5242880
 }

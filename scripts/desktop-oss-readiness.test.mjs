@@ -5,6 +5,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  auditLicenseDigest,
   auditPackageScriptFiles,
   auditPackageScripts,
   auditSourceAssetPolicy,
@@ -190,6 +191,7 @@ test('public package scripts must reference files present in the export selectio
 
 test('public release and test transitive inputs are required export files', () => {
   const requiredInputs = [
+    'LICENSE-UPSTREAM',
     'docs/iterate_安装指南.md',
     'docs/release/INSTALLATION.md',
     'docs/release/INSTALL_PROMPT.md',
@@ -197,6 +199,7 @@ test('public release and test transitive inputs are required export files', () =
     'docs/worker-handoff-schema-v0.md',
     'scripts/desktop-bridge-web-push-security.test.mjs',
     'scripts/desktop-build-rs-target-gating.test.mjs',
+    'scripts/desktop-community-activation.test.mjs',
     'scripts/desktop-codex-live-source.test.mjs',
     'scripts/desktop-ghost-suggestion-priority.test.mjs',
     'scripts/desktop-speech-frontend-ownership.test.mjs',
@@ -208,6 +211,37 @@ test('public release and test transitive inputs are required export files', () =
       `missing required export input: ${requiredInput}`,
     )
   }
+})
+
+test('current and upstream MIT notices are independently required', () => {
+  assert.deepEqual(manifest.requiredLicenseNotices, [
+    'Copyright (c) 2026 kexin94yyds',
+  ])
+  assert.deepEqual(manifest.requiredUpstreamLicenseNotices, [
+    'Copyright (c) 2025 imshuo',
+    'Based on cunzhi (https://github.com/imhuso/cunzhi)',
+    'Copyright (c) 2024 imhuso',
+  ])
+  assert.deepEqual(manifest.requiredLicenseDigests, {
+    LICENSE: '71cabcd1496fbb0a40166e0b55814e45ef509fd116e106c38dba81cd36a1f16d',
+    'LICENSE-UPSTREAM': 'ac18099706256975b7f8de0e88506072618f2a05ef422f1974956040e31508ab',
+  })
+})
+
+test('license digest gate rejects permission or warranty text changes', async () => {
+  const upstream = await readFile(new URL('../LICENSE-UPSTREAM', import.meta.url))
+  assert.deepEqual(
+    auditLicenseDigest('LICENSE-UPSTREAM', upstream, manifest.requiredLicenseDigests),
+    [],
+  )
+
+  const mutated = Buffer.from(
+    upstream.toString('utf8').replace('Permission is hereby granted', 'Permission was removed'),
+  )
+  assert.deepEqual(
+    auditLicenseDigest('LICENSE-UPSTREAM', mutated, manifest.requiredLicenseDigests),
+    [{ code: 'license-digest-mismatch', path: 'LICENSE-UPSTREAM' }],
+  )
 })
 
 test('desktop Tauri config does not retain private mobile signing configuration', async () => {

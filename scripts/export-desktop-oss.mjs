@@ -213,6 +213,16 @@ export function auditSourceAssetPolicy(filePath) {
   return []
 }
 
+export function auditLicenseDigest(filePath, bytes, expectedDigests) {
+  const expected = expectedDigests?.[filePath]
+  if (!expected)
+    return []
+  const actual = createHash('sha256').update(bytes).digest('hex')
+  return actual === expected
+    ? []
+    : [{ code: 'license-digest-mismatch', path: filePath }]
+}
+
 function gitOutput(sourceRoot, args) {
   return execFileSync('git', ['-C', sourceRoot, ...args], {
     encoding: 'utf8',
@@ -278,6 +288,11 @@ function auditSelectedFiles(sourceRoot, manifest, selectedPaths) {
     }
 
     const bytes = readFileSync(absolutePath)
+    findings.push(...auditLicenseDigest(
+      filePath,
+      bytes,
+      manifest.requiredLicenseDigests,
+    ))
     const binary = bytes.subarray(0, Math.min(bytes.length, 8192)).includes(0)
     if (binary) {
       if (!binaryIsAllowed(manifest, filePath))
@@ -301,6 +316,12 @@ function auditSelectedFiles(sourceRoot, manifest, selectedPaths) {
       for (const notice of manifest.requiredLicenseNotices) {
         if (!text.includes(notice))
           findings.push({ code: 'missing-license-notice', path: filePath })
+      }
+    }
+    if (filePath === 'LICENSE-UPSTREAM') {
+      for (const notice of manifest.requiredUpstreamLicenseNotices ?? []) {
+        if (!text.includes(notice))
+          findings.push({ code: 'missing-upstream-license-notice', path: filePath })
       }
     }
   }
