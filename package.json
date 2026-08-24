@@ -87,7 +87,7 @@
     "@unocss/preset-icons": "^66.2.1",
     "@unocss/preset-typography": "^66.2.1",
     "@unocss/preset-web-fonts": "^66.2.1",
-    "@vitejs/plugin-vue": "^5.2.4",
+    "@vitejs/plugin-vue": "^6.0.8",
     "eslint": "^9.29.0",
     "eslint-plugin-format": "^1.0.1",
     "naive-ui": "^2.41.1",
