@@ -1,7 +1,3 @@
-<p align="center">
-  <a href="https://iterate.xin/"><img src="assets/iterate-desktop-hero-zh.png" alt="iterate：让 AI 协作不断线" width="100%"></a>
-</p>
-
 <h1 align="center">iterate</h1>
 
 <p align="center">
@@ -26,12 +22,6 @@
   <a href="https://github.com/co-iterate/iterate-desktop"><img src="https://img.shields.io/github/stars/co-iterate/iterate-desktop?style=flat&amp;label=stars&amp;color=08A67A" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/macOS%20%7C%20Windows-111111?style=flat" alt="Supported platforms: macOS and Windows">
-</p>
-
-<p align="center">
-  <img src="assets/iterate-desktop-interceptor-zh.png" alt="iterate Desktop 中文拦截与继续界面" width="61%">
-  &nbsp;&nbsp;
-  <img src="assets/iterate-mobile-interceptor-zh.png" alt="iterate Remote iPhone 中文远程继续界面" width="31%">
 </p>
 
 iterate 连接正在运行的 AI 编程工具，在它准备过早结束、等待确认或需要人工方向时，把控制权交还给你。你可以在桌面继续，也可以通过自己的 iPhone 回到同一条任务链路，而不是重新解释上下文、重新启动任务。
@@ -185,7 +175,28 @@ coiterate 的协作团队：
 3. 提交包含验证证据的 PR；
 4. 完成持续贡献与互相 Review 后，再承担稳定的模块维护职责。
 
-## 社区
+## 社区交流
+
+欢迎加入 iterate 交流群，讨论使用问题、产品建议、开发协作和项目进展。
+
+<table>
+  <thead>
+    <tr>
+      <th align="center">微信群</th>
+      <th align="center">QQ群</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><img src="assets/community-wechat-group.png" alt="iterate 微信交流群二维码" title="扫码加入 iterate 微信交流群" width="180" height="180"></td>
+      <td align="center"><img src="assets/community-qq-group.png" alt="iterate QQ群二维码" title="扫码加入 iterate QQ群" width="180" height="180"></td>
+    </tr>
+    <tr>
+      <td align="center"><sub>有效期至 2026-09-04；失效后请先加入 QQ 群联系管理员</sub></td>
+      <td align="center"><sub>群号：186107551</sub></td>
+    </tr>
+  </tbody>
+</table>
 
 - [GitHub Issues](https://github.com/co-iterate/iterate-desktop/issues)：Bug、需求与设计讨论
 - [GitHub Pull Requests](https://github.com/co-iterate/iterate-desktop/pulls)：实现、Review 与验证证据
@@ -198,13 +209,3 @@ coiterate 的协作团队：
 ## License
 
 本项目遵循 [MIT License](LICENSE)。上游版权与第三方声明见 [NOTICE](NOTICE)、[LICENSE-UPSTREAM](LICENSE-UPSTREAM) 与 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=co-iterate%2Fiterate-desktop&type=date&legend=top-left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=co-iterate/iterate-desktop&type=date&theme=dark">
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=co-iterate/iterate-desktop&type=date">
-    <img alt="iterate Desktop Star History" src="https://api.star-history.com/svg?repos=co-iterate/iterate-desktop&type=date">
-  </picture>
-</a>
