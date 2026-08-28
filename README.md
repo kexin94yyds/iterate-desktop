@@ -1,175 +1,210 @@
 <p align="center">
-  <img src="./icons/icon-128.png" width="128" height="128" alt="iterate logo">
+  <a href="https://iterate.xin/"><img src="assets/iterate-desktop-hero-zh.png" alt="iterate：让 AI 协作不断线" width="100%"></a>
+</p>
+
+<h1 align="center">iterate</h1>
+
+<p align="center">
+  <strong>让 AI 协作不断线。</strong><br>
+  在桌面拦截关键时刻，在手机继续长任务；Agent、工作区与权限始终留在自己的设备上。
+</p>
+
+<h3 align="center">
+  <a href="https://github.com/kexin94yyds/iterate-releases/releases/latest">下载最新版</a>
+  · <a href="#文档">查看文档</a>
+  · <a href="CONTRIBUTING.md">参与共创</a>
+</h3>
+
+<p align="center"><sub>
+  由 <a href="https://github.com/co-iterate">coiterate</a> 共同维护的本地优先开源桌面项目。<br>
+  本仓库公开 iterate Desktop、MCP/CLI、Bridge 协议与本地配对兼容层；官方移动客户端与托管服务单独分发。
+</sub></p>
+
+<p align="center">
+  <a href="https://github.com/kexin94yyds/iterate-releases/releases/latest"><img src="https://img.shields.io/github/v/release/kexin94yyds/iterate-releases?style=flat&amp;label=release&amp;color=111111" alt="Latest release"></a>
+  <a href="https://github.com/kexin94yyds/iterate-releases/releases"><img src="https://img.shields.io/github/downloads/kexin94yyds/iterate-releases/total?style=flat&amp;label=downloads&amp;color=111111" alt="Total downloads"></a>
+  <a href="https://github.com/co-iterate/iterate-desktop"><img src="https://img.shields.io/github/stars/co-iterate/iterate-desktop?style=flat&amp;label=stars&amp;color=08A67A" alt="GitHub stars"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/macOS%20%7C%20Windows-111111?style=flat" alt="Supported platforms: macOS and Windows">
 </p>
 
 <p align="center">
-  <a href="https://github.com/kexin94yyds/iterate-desktop/stargazers">
-    <img src="https://img.shields.io/github/stars/kexin94yyds/iterate-desktop?style=social" alt="GitHub stars">
-  </a>
-  <a href="https://github.com/kexin94yyds/iterate-desktop/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/kexin94yyds/iterate-desktop" alt="License">
-  </a>
-  <a href="https://github.com/kexin94yyds/iterate-releases/releases">
-    <img src="https://img.shields.io/github/v/release/kexin94yyds/iterate-releases" alt="Version">
-  </a>
-  <a href="https://github.com/kexin94yyds/iterate-releases/releases">
-    <img src="https://img.shields.io/badge/version-0.6.2-blue" alt="Current Version">
-  </a>
+  <img src="assets/iterate-desktop-interceptor-zh.png" alt="iterate Desktop 中文拦截与继续界面" width="61%">
+  &nbsp;&nbsp;
+  <img src="assets/iterate-mobile-interceptor-zh.png" alt="iterate Remote iPhone 中文远程继续界面" width="31%">
 </p>
 
-# iterate 🔄
-**让 AI 协作不断线**
+iterate 连接正在运行的 AI 编程工具，在它准备过早结束、等待确认或需要人工方向时，把控制权交还给你。你可以在桌面继续，也可以通过自己的 iPhone 回到同一条任务链路，而不是重新解释上下文、重新启动任务。
 
-还在为 AI 助手总是提前结束对话而抓狂吗？**iterate** 专为终结 AI 的“草草了事”而生。它不仅是一个智能拦截器，更是一个兼容 Web、CLI、IDE、Mobile 的多端异步任务管理框架。
+## 下载与安装
 
----
+正式安装包通过独立的 [iterate Releases](https://github.com/kexin94yyds/iterate-releases/releases) 仓库发布。
 
-## 🔓 公开源码范围
+| 平台 | 获取方式 | 说明 |
+| --- | --- | --- |
+| macOS | [下载最新版本](https://github.com/kexin94yyds/iterate-releases/releases/latest) | 安装后按引导接入支持 MCP 的客户端 |
+| Windows | [下载最新版本](https://github.com/kexin94yyds/iterate-releases/releases/latest) | 解压后阅读包内 `INSTALLATION.md` |
+| 从源码构建 | [构建文档](BUILDING.md) | Node.js、pnpm、Rust 与 Tauri 2 |
 
-这个仓库公开的是 **iterate Desktop**：Tauri 桌面端、MCP/CLI、Bridge 协议与本地配对兼容层。
+完整安装流程见 [安装指南](docs/INSTALLATION.md)，常见故障见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)。
 
-以下组件属于官方生态，但不包含在本仓库，也不受本仓库 MIT 许可证覆盖：
+## 为什么需要 iterate
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>把“结束”变成一次确认</h3>
+      <p>当 AI 准备收尾时，iterate 显示当前请求、预定义选项和补充输入，让你决定继续、调整方向或真正结束。</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>桌面与手机接力</h3>
+      <p>桌面端生成短时配对信息，iPhone 连接你自己的 Mac。任务仍在原设备运行，手机只负责查看、通知和回复。</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>本地优先，而不是托管你的代码</h3>
+      <p>工作区、Agent Runtime、模型登录态和执行权限留在本机。Bridge 负责把同一任务的控制信号送到正确的会话。</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>不只是一只弹窗</h3>
+      <p>多会话管理、历史与状态、Markdown、多模态输入、语音、CLI、IDE 与跨平台兼容层共同组成可持续的人工接管工作流。</p>
+    </td>
+  </tr>
+</table>
+
+## 当前能力
+
+| 能力 | 状态 | 说明 |
+| --- | --- | --- |
+| Desktop 拦截与任务管理 | ✅ | Tauri 2 + Vue 3，支持 macOS 与 Windows |
+| MCP / CLI | ✅ | `iterate` 与 `mcp-server` 提供本地服务、工具与桥接能力 |
+| 多会话与历史状态 | ✅ | 管理并恢复并行 AI 任务，保留明确的任务路由 |
+| 多模态与语音 | ✅ | 支持文本、图片、文件、路径、Markdown 与本地语音链路 |
+| iPhone 远程继续 | ✅ 独立分发 | 本仓库公开配对/Bridge 协议与兼容层；官方 iOS 客户端源码不在本仓库 |
+| IDE / 浏览器扩展 | 独立分发 | 官方扩展属于 iterate 生态，但不包含在本 desktop-source 仓库 |
+
+## 开源范围与产品边界
+
+这个仓库公开的是 **iterate Desktop**：桌面 UI、MCP/CLI、Bridge 协议、本地配对兼容层，以及构建、测试和发布门禁。
+
+以下组件属于 iterate 产品生态，但不包含在本仓库，也不受本仓库 MIT 许可证覆盖：
 
 - iOS、Android 与其他官方移动客户端；
 - 浏览器扩展、VS Code / Windsurf 扩展；
 - 托管服务、生产运维配置、支付与发布凭据。
 
-桌面端可以在没有这些闭源组件的情况下独立构建和运行。涉及官方客户端或托管服务的功能会在文档中明确标注。
+社区构建默认不需要激活码。桌面核心、Bridge 与二维码配对可以独立构建和运行；涉及官方客户端或托管服务的能力会在文档中明确标注。
 
-社区构建默认不需要激活码，桌面核心、Bridge 和 iPhone 二维码配对均可直接使用。官方 iPhone App、托管服务、企业支持或带商业服务的官方分发可以采用独立条款。
+## 文档
 
----
+### 用户文档
 
-## 📸 核心预览
+| 目标 | 入口 |
+| --- | --- |
+| 安装和首次接入 | [安装指南](docs/INSTALLATION.md) |
+| 排查常见问题 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
+| 了解隐私边界 | [PRIVACY.md](PRIVACY.md) |
+| 获取支持 | [SUPPORT.md](SUPPORT.md) |
 
-### 1. 智能拦截
-当 AI 想要结束对话时，拦截窗口会自动弹出，让您完全掌控对话节奏，实现“无限对话”。
-![拦截窗口预览](./screenshots/interceptor.png)
+### 开发者与维护者文档
 
----
+| 目标 | 入口 |
+| --- | --- |
+| 从源码构建 | [BUILDING.md](BUILDING.md) |
+| 理解六层架构 | [iterate 六层架构](docs/iterate_6_Layers_Architecture.md) |
+| 理解 MCP 工具流 | [MCP 核心流程](docs/MCP核心流程详解.md) |
+| 阅读对话历史设计 | [conversation-history-design.md](docs/conversation-history-design.md) |
+| 阅读 Loop 合同 | [loop-contract-v0.md](docs/loop-contract-v0.md) |
+| 安全报告与边界 | [SECURITY.md](SECURITY.md) |
+| 参与贡献 | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-### 2. 官方多端生态与跨端体验
+## 架构
 
-iterate 也提供独立分发的官方多端客户端与扩展。下面展示的是完整产品生态，并不表示相关源码都位于本仓库。
+```mermaid
+flowchart LR
+    User["你 · Desktop / iPhone"]
+    Hosts["AI Host<br/>Codex · IDE · CLI"]
+    MCP["iterate MCP / CLI<br/>请求 · 工具 · 路由"]
+    Desktop["iterate Desktop<br/>拦截 · 状态 · 输入"]
+    Bridge["Bridge<br/>配对 · 通知 · 回复"]
+    Runtime["本地 Agent Runtime<br/>工作区 · 权限 · 模型账号"]
 
-#### 📱 移动端与 Web 管理
-适配移动设备与主流浏览器，支持随时随地查看任务状态、管理配置。
-![移动端管理](./screenshots/feature3.png)
-
-#### 💻 VSCode / Windsurf 扩展（单独分发）
-官方扩展提供 IDE 侧边栏与服务生命周期管理，但扩展源码不包含在本 desktop-source 仓库。
-
-#### 🔗 iOS Bridge（公开协议，官方客户端单独分发）
-本仓库保留 Bridge 协议、配对和兼容层；官方 iOS 客户端及其源码不包含在本仓库。
-
----
-
-### 3. 任务历史与状态跟踪
-
-实时记录 AI 的每一个思考步骤与任务摘要，确保复杂长任务的透明度。
-![任务管理](./screenshots/feature1.png)
-
----
-
-## ✨ 核心特性
-
-- **多端异步并发**：原生支持多个 AI 会话并行，任务进程独立管理。
-- **智能拦截**：AI 准备收尾时自动触发 GUI/CLI 确认。
-- **Skill 自动恢复**：端口占用或服务未启动时智能自愈。
-- **全功能交互**：支持 Markdown 渲染、快捷键增强、多模态输入。
-
----
-
-## 🚀 快速开始
-
-### 第一步：下载安装包
-
-访问 [Releases](https://github.com/kexin94yyds/iterate-releases/releases) 下载对应系统的安装包。
-
-### 第二步：安装 iterate
-
-- **macOS / Linux**：解压后运行 `./install.sh`，按提示选择要接入的客户端。
-- **Windows**：解压后查看包内 `INSTALLATION.md`，按说明完成安装和客户端接入。
-
-### 第三步：接入客户端
-
-当前说明文档支持以下客户端：
-
-- Windsurf
-- Cursor
-- Codex CLI
-- 其他客户端（按文档中的 AI 提示词辅助排障）
-
-### 第四步：验证
-
-安装完成后，重启你的客户端，并确认 iterate 已完成接入。
-
-如果安装卡住，直接使用包内 `INSTALLATION.md` 里的完整 AI 提示词，让 AI 继续帮你完成安装、MCP 配置和验证。
-
----
-
-## 🏗️ 系统架构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      iterate 生态系统                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌──────────┐ │
-│  │  VSCode 插件    │    │  iterate.app    │    │  iOS     │ │
-│  │  (IDE 端)       │    │  (Web/Tauri)    │    │  Bridge  │ │
-│  └────────┬────────┘    └────────┬────────┘    └─────┬────┘ │
-│           │                      │                    │     │
-│           │ 启动 / 通信           │ 提供                │ 桥接  │
-│           ▼                      ▼                    ▼     │
-│  ┌──────────────────────────────────────────────────┐      │
-│  │        iterate --serve (HTTP 核心服务)           │      │
-│  │        监听端口: 5310+ (自动分配/健康检查)         │      │
-│  └────────────────────┬────────────────────┘               │
-│                       │                                     │
-│                       │ 异步请求 / 文件交换                 │
-│                       ▼                                     │
-│  ┌──────────────────────────────────────────────────┐      │
-│  │   iterate --bridge (AI 交互桥接，内置于 binary)   │      │
-│  │   实现任务状态同步与用户反馈拦截                 │      │
-│  └──────────────────────────────────────────────────┘      │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+    Hosts <-->|MCP| MCP
+    MCP <--> Desktop
+    Desktop <--> Bridge
+    Bridge <--> User
+    MCP <--> Runtime
 ```
 
----
+更详细的模块与数据流见 [架构文档](docs/iterate_6_Layers_Architecture.md) 和 [MCP 核心流程](docs/MCP核心流程详解.md)。
 
----
-
-## ⌨️ 常用快捷键
-
-| 快捷键 | 功能 | 说明 |
-| :--- | :--- | :--- |
-| **⌘ + Enter** | 快速发送 | 提交当前输入并继续 |
-| **⌥ + Enter** | 继续对话 | 让 AI 继续执行当前逻辑 |
-| **Tab** | 下一个选项 | 快速切换预定义反馈选项 |
-| **Esc** | 关闭弹窗 | 最小化或关闭当前拦截窗口 |
-
----
-
-## 🛠️ 本地开发
+## 本地开发
 
 ```bash
-git clone https://github.com/kexin94yyds/iterate-desktop.git
+git clone https://github.com/co-iterate/iterate-desktop.git
 cd iterate-desktop
 pnpm install
 pnpm tauri:dev
 ```
 
----
+常用验证：
 
-## 🤝 参与贡献
+```bash
+pnpm lint
+pnpm test:scripts
+pnpm test:frontend
+cargo test
+```
 
-我们欢迎所有形式的贡献！
-感谢 [acemcp](https://github.com/qy527145/acemcp) 提供的语义搜索能力。
+完整环境要求、平台依赖与打包流程见 [BUILDING.md](BUILDING.md)。
 
----
+## 参与共创
 
-## 📄 开源协议
+我们欢迎错误修复、测试、文档、跨平台适配、交互改进和新工具提案。请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)，所有改动通过分支与 Pull Request 提交。
 
-MIT License
+`main` 已启用保护：
+
+- 至少 1 次批准后才能合并；
+- 新提交会使旧批准失效；
+- Review 对话必须解决；
+- 禁止强推与删除主分支。
+
+coiterate 的协作团队：
+
+| Team | 职责 | 仓库权限 |
+| --- | --- | --- |
+| [`contributors`](https://github.com/orgs/co-iterate/teams/contributors) | 通过 PR 共创功能、测试与文档 | Write |
+| [`maintainers`](https://github.com/orgs/co-iterate/teams/maintainers) | 模块维护、Review 与质量边界 | Maintain |
+| [`release`](https://github.com/orgs/co-iterate/teams/release) | 可验证打包与发布流程 | Maintain |
+
+开始参与：
+
+1. 在 [Issues](https://github.com/co-iterate/iterate-desktop/issues) 中描述问题或提案；
+2. 从小而完整的任务开始，并在实现前确认边界；
+3. 提交包含验证证据的 PR；
+4. 完成持续贡献与互相 Review 后，再承担稳定的模块维护职责。
+
+## 社区
+
+- [GitHub Issues](https://github.com/co-iterate/iterate-desktop/issues)：Bug、需求与设计讨论
+- [GitHub Pull Requests](https://github.com/co-iterate/iterate-desktop/pulls)：实现、Review 与验证证据
+- [iterate 官网](https://iterate.xin/)：产品、下载与公开合规信息
+
+## 特别感谢
+
+感谢 [cunzhi](https://github.com/imhuso/cunzhi) 的原始开源工作，以及 [acemcp](https://github.com/qy527145/acemcp) 提供的语义搜索能力。也感谢每一位使用、反馈、测试与参与共创的人。
+
+## License
+
+本项目遵循 [MIT License](LICENSE)。上游版权与第三方声明见 [NOTICE](NOTICE)、[LICENSE-UPSTREAM](LICENSE-UPSTREAM) 与 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=co-iterate%2Fiterate-desktop&type=date&legend=top-left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=co-iterate/iterate-desktop&type=date&theme=dark">
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=co-iterate/iterate-desktop&type=date">
+    <img alt="iterate Desktop Star History" src="https://api.star-history.com/svg?repos=co-iterate/iterate-desktop&type=date">
+  </picture>
+</a>

@@ -77,7 +77,7 @@ rustc --version
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # 克隆仓库
-git clone https://github.com/kexin94yyds/iterate-desktop.git
+git clone https://github.com/co-iterate/iterate-desktop.git
 cd iterate-desktop
 
 # 方式 A: 如果有预编译版本
@@ -272,7 +272,7 @@ Get-AppxPackage -Name Microsoft.WebView2Runtime
 
 ```powershell
 # 1. 克隆仓库
-git clone https://github.com/kexin94yyds/iterate-desktop.git
+git clone https://github.com/co-iterate/iterate-desktop.git
 cd iterate-desktop
 
 # 2. 运行安装脚本
@@ -906,7 +906,7 @@ git --version
 
 # 2.1 克隆仓库
 cd "$env:USERPROFILE\Projects"
-git clone https://github.com/kexin94yyds/iterate-desktop.git
+git clone https://github.com/co-iterate/iterate-desktop.git
 cd iterate-desktop
 
 # 2.2 安装（选择一种方式）
