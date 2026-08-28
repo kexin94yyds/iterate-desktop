@@ -25,6 +25,35 @@ function windowsUncUserPath(user) {
   return `\\\\${['fileserver', 'Users', user, 'project'].join('\\')}`
 }
 
+function pngDimensions(bytes) {
+  assert.equal(bytes.subarray(1, 4).toString('ascii'), 'PNG')
+  return {
+    width: bytes.readUInt32BE(16),
+    height: bytes.readUInt32BE(20),
+  }
+}
+
+test('public README uses coiterate ownership and current verified product images', async () => {
+  const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8')
+  const windowsSetup = await readFile(new URL('../WINDOWS_SETUP_FOR_AI.md', import.meta.url), 'utf8')
+  const hero = await readFile(new URL('../assets/iterate-desktop-hero-zh.png', import.meta.url))
+  const desktop = await readFile(new URL('../assets/iterate-desktop-interceptor-zh.png', import.meta.url))
+  const mobile = await readFile(new URL('../assets/iterate-mobile-interceptor-zh.png', import.meta.url))
+
+  assert.match(readme, /github\.com\/co-iterate\/iterate-desktop/)
+  assert.match(readme, /由 <a href="https:\/\/github\.com\/co-iterate">coiterate<\/a> 共同维护/)
+  assert.match(readme, /assets\/iterate-desktop-hero-zh\.png/)
+  assert.match(readme, /assets\/iterate-desktop-interceptor-zh\.png/)
+  assert.match(readme, /assets\/iterate-mobile-interceptor-zh\.png/)
+  assert.match(readme, /CONTRIBUTING\.md/)
+  assert.doesNotMatch(readme, /github\.com\/kexin94yyds\/iterate-desktop/)
+  assert.match(windowsSetup, /github\.com\/co-iterate\/iterate-desktop\.git/)
+  assert.doesNotMatch(windowsSetup, /github\.com\/kexin94yyds\/iterate-desktop/)
+  assert.deepEqual(pngDimensions(hero), { width: 2326, height: 914 })
+  assert.deepEqual(pngDimensions(desktop), { width: 1200, height: 1606 })
+  assert.deepEqual(pngDimensions(mobile), { width: 1284, height: 2778 })
+})
+
 test('desktop allowlist includes the buildable core and excludes private clients and artifacts', () => {
   const selected = selectIncludedPaths(manifest, [
     'src/rust/lib.rs',
