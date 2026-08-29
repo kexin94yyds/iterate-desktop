@@ -57,6 +57,7 @@ test('public README uses coiterate ownership and current product and community i
   assert.match(readme, /有效期至 2026-09-04/)
   assert.match(readme, /群号：186107551/)
   assert.match(readme, /CONTRIBUTING\.md/)
+  assert.match(readme, /Android 远程继续[\s\S]*?设计中[\s\S]*?github\.com\/co-iterate\/iterate-desktop\/issues\/22[\s\S]*?尚无可下载 APK/)
   assert.doesNotMatch(readme, /star-history\.com/)
   assert.doesNotMatch(readme, /community-qr-publisher|管理员合并|内部维护流程/)
   assert.doesNotMatch(readme, /github\.com\/kexin94yyds\/iterate-desktop/)

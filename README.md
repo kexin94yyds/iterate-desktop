@@ -82,6 +82,7 @@ iterate 连接正在运行的 AI 编程工具，在它准备过早结束、等�
 | 多会话与历史状态 | ✅ | 管理并恢复并行 AI 任务，保留明确的任务路由 |
 | 多模态与语音 | ✅ | 支持文本、图片、文件、路径、Markdown 与本地语音链路 |
 | iPhone 远程继续 | ✅ 独立分发 | 本仓库公开配对/Bridge 协议与兼容层；官方 iOS 客户端源码不在本仓库 |
+| Android 远程继续 | 设计中 | 已建立 [Android v0 设计与实现路线](https://github.com/co-iterate/iterate-desktop/issues/22)；目前尚无可下载 APK |
 | IDE / 浏览器扩展 | 独立分发 | 官方扩展属于 iterate 生态，但不包含在本 desktop-source 仓库 |
 
 ## 开源范围与产品边界
