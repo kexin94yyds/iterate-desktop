@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://iterate.xin/"><img src="assets/iterate-desktop-hero-zh.png" alt="iterate：让 AI 协作不断线" width="100%"></a>
+</p>
+
 <h1 align="center">iterate</h1>
 
 <p align="center">
@@ -22,6 +26,12 @@
   <a href="https://github.com/co-iterate/iterate-desktop"><img src="https://img.shields.io/github/stars/co-iterate/iterate-desktop?style=flat&amp;label=stars&amp;color=08A67A" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/macOS%20%7C%20Windows-111111?style=flat" alt="Supported platforms: macOS and Windows">
+</p>
+
+<p align="center">
+  <img src="assets/iterate-desktop-interceptor-zh.png" alt="iterate Desktop 中文拦截与继续界面" width="61%">
+  &nbsp;&nbsp;
+  <img src="assets/iterate-mobile-interceptor-zh.png" alt="iterate Remote iPhone 中文远程继续界面" width="31%">
 </p>
 
 iterate 连接正在运行的 AI 编程工具，在它准备过早结束、等待确认或需要人工方向时，把控制权交还给你。你可以在桌面继续，也可以通过自己的 iPhone 回到同一条任务链路，而不是重新解释上下文、重新启动任务。
