@@ -238,6 +238,9 @@ test('public package scripts must reference files present in the export selectio
 test('public release and test transitive inputs are required export files', () => {
   const requiredInputs = [
     'LICENSE-UPSTREAM',
+    'docs/INSTALLATION.md',
+    'docs/INSTALL_PROMPT.md',
+    'docs/SYSTEM_PROMPT.md',
     'docs/iterate_安装指南.md',
     'docs/release/INSTALLATION.md',
     'docs/release/INSTALL_PROMPT.md',
@@ -248,6 +251,7 @@ test('public release and test transitive inputs are required export files', () =
     'scripts/desktop-community-activation.test.mjs',
     'scripts/desktop-codex-live-source.test.mjs',
     'scripts/desktop-ghost-suggestion-priority.test.mjs',
+    'scripts/install-docs-contract.test.mjs',
     'scripts/desktop-speech-frontend-ownership.test.mjs',
   ]
 

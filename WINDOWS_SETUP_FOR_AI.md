@@ -2,7 +2,7 @@
 
 > 历史说明：本文件保留了大量 Windows 手动接入、旧路径和旧命名示例，适合作为排障参考。
 >
-> 当前对外交付的主路径请优先以 [docs/iterate_安装指南.md](docs/iterate_安装指南.md) 和安装包中的 `INSTALLATION.md` 为准。
+> 当前对外交付的主路径请优先以 [docs/INSTALLATION.md](docs/INSTALLATION.md) 和安装包中的 `INSTALLATION.md` 为准。
 > 如果本文与当前安装包说法冲突，以安装包和主安装指南为准。
 
 > 本文档用于指导 AI 帮助 Windows 用户配置 iterate

@@ -17,6 +17,8 @@
 - `Install iterate.bat`（Windows）
 - `Start iterate.bat`（Windows）
 - `INSTALLATION.md`
+- `INSTALL_PROMPT.md`
+- `SYSTEM_PROMPT.md`
 
 ## 用户如何使用
 
@@ -34,7 +36,7 @@
 
 ## 如果安装卡住
 
-直接把 `INSTALLATION.md` 里的 AI 提示词发给 AI，让 AI 继续帮助完成：
+直接把 `INSTALL_PROMPT.md` 发给 AI，让 AI 继续帮助完成：
 - iterate 安装
 - 客户端接入
 - MCP 配置
@@ -46,6 +48,8 @@ GitHub Release 的安装包由仓库根目录的这些文件生成：
 - `install.sh`
 - `release-package/windows/Install iterate.bat`
 - `release-package/windows/Start iterate.bat`
-- `docs/iterate_安装指南.md`
+- `docs/INSTALLATION.md`
+- `docs/INSTALL_PROMPT.md`
+- `docs/SYSTEM_PROMPT.md`
 
 如果这里的内容和根目录方案不一致，应该优先以根目录为准并同步更新这个目录。
