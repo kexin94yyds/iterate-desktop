@@ -125,14 +125,30 @@ pub async fn get_app_info() -> Result<String, String> {
 
 #[tauri::command]
 pub async fn requires_activation_gate() -> bool {
+    activation_gate_required_for_current_build(is_mcp_interaction_process())
+}
+
+pub(crate) fn activation_gate_required_for_current_build(is_mcp_shell: bool) -> bool {
     activation_gate_required_for_build(
         cfg!(not(any(target_os = "android", target_os = "ios"))),
         option_env!("ITERATE_REQUIRE_ACTIVATION"),
+        is_mcp_shell,
     )
 }
 
-fn activation_gate_required_for_build(is_desktop: bool, build_flag: Option<&str>) -> bool {
+fn is_mcp_interaction_process() -> bool {
+    std::env::var_os("ITERATE_STANDALONE_MODE").is_some()
+        || std::env::var_os("ITERATE_MCP_REQUEST_FILE").is_some()
+        || std::env::args().any(|arg| arg == "--mcp-request" || arg == "--ui")
+}
+
+fn activation_gate_required_for_build(
+    is_desktop: bool,
+    build_flag: Option<&str>,
+    is_mcp_shell: bool,
+) -> bool {
     is_desktop
+        && !is_mcp_shell
         && build_flag.is_some_and(|value| {
             matches!(
                 value.trim().to_ascii_lowercase().as_str(),
@@ -5003,11 +5019,16 @@ mod tests {
 
     #[test]
     fn community_builds_skip_activation_unless_official_build_opts_in() {
-        assert!(!activation_gate_required_for_build(true, None));
-        assert!(!activation_gate_required_for_build(true, Some("0")));
-        assert!(activation_gate_required_for_build(true, Some("1")));
-        assert!(activation_gate_required_for_build(true, Some("TRUE")));
-        assert!(!activation_gate_required_for_build(false, Some("1")));
+        assert!(!activation_gate_required_for_build(true, None, false));
+        assert!(!activation_gate_required_for_build(true, Some("0"), false));
+        assert!(activation_gate_required_for_build(true, Some("1"), false));
+        assert!(activation_gate_required_for_build(
+            true,
+            Some("TRUE"),
+            false
+        ));
+        assert!(!activation_gate_required_for_build(false, Some("1"), false));
+        assert!(!activation_gate_required_for_build(true, Some("1"), true));
     }
 
     #[test]

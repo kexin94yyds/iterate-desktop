@@ -31,6 +31,7 @@ jobs:
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
       CARGO_PROFILE_RELEASE_OPT_LEVEL: 3
       ITERATE_RELEASE_PUBLIC_KEY_B64: ${{ secrets.ITERATE_RELEASE_PUBLIC_KEY_B64 }}
+      ITERATE_REQUIRE_ACTIVATION: '0'
 
     steps:
       - name: Checkout code
@@ -72,6 +73,7 @@ jobs:
           cargo check --lib --bins
           cargo test --test windows_window_registry
           pnpm run test:windows-experience
+          pnpm run test:desktop-community-activation
 
       - name: Build Windows binaries and NSIS installer
         run: pnpm exec tauri build --bundles nsis

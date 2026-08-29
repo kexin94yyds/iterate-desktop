@@ -94,6 +94,13 @@ Require-File (Join-Path $PackageDir "Install iterate.bat") "install helper"
 Require-File (Join-Path $PackageDir "Start iterate.bat") "start helper"
 Require-File (Join-Path $PackageDir "INSTALLATION.md") "installation guide"
 
+$ActivationProbe = & (Join-Path $AppDir "iterate.exe") --activation-gate-status
+if ($LASTEXITCODE -eq 0 -and $ActivationProbe -eq "activation_gate_required=false") {
+  Pass "community activation gate is disabled"
+} else {
+  Fail "community activation gate probe failed: $ActivationProbe"
+}
+
 Require-X64Pe (Join-Path $AppDir "iterate.exe") "iterate executable"
 Require-X64Pe (Join-Path $AppDir "mcp-server.exe") "mcp-server executable"
 Require-X64Pe (Join-Path $AppDir "WebView2Loader.dll") "WebView2 loader"

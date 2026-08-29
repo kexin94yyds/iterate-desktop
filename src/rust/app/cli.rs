@@ -660,6 +660,13 @@ pub fn handle_early_cli_args() -> bool {
             print_version();
             true
         }
+        "--activation-gate-status" => {
+            println!(
+                "activation_gate_required={}",
+                crate::ui::commands::activation_gate_required_for_current_build(false)
+            );
+            true
+        }
         _ => false,
     }
 }
@@ -2193,6 +2200,7 @@ fn print_help() {
         "  iterate --mobile-route-verify  重新验证已登记的正式手机公网路线\n",
         "  iterate --mcp-request <文件>  处理 MCP 请求\n",
         "  iterate --check-frontend-assets [--frontend-dist dist]  检查生产包前端资源\n",
+        "  iterate --activation-gate-status  输出当前构建的主界面激活门禁状态\n",
         "  iterate --help                显示此帮助信息\n",
         "  iterate --version             显示版本信息\n",
         "\n",
