@@ -55,6 +55,7 @@ interface Props {
 interface Emits {
   mcpResponse: [response: any]
   mcpCancel: []
+  mcpCloseCurrentDialog: []
   themeChange: [theme: string]
   toggleAlwaysOnTop: []
   toggleMute: []
@@ -1699,6 +1700,7 @@ onUnmounted(async () => {
           @toggle-codex-live-mute="handleToggleCodexLiveMute"
           @toggle-shortcut="handleToggleShortcut"
           @minimize-window="minimizeWindow"
+          @close-current-dialog="$emit('mcpCloseCurrentDialog')"
         />
       </div>
 

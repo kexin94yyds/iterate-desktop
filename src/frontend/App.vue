@@ -198,7 +198,15 @@ onMounted(async () => {
       return
     }
 
-    await speechRuntimeHost.initialize()
+    try {
+      await speechRuntimeHost.initialize()
+    }
+    catch (error) {
+      // 语音运行时属于可选能力。多实例启动时当前窗口可能不是语音 owner，
+      // 不能因此阻断授权策略读取和主界面初始化。
+      console.warn('语音运行时初始化失败，主界面将继续启动:', error)
+      await reportTrialDebug(`onMounted:speechRuntimeDegraded ${String(error)}`)
+    }
 
     if (mcpLaunchContext.value.kind === 'invalid')
       await reportTrialDebug(`onMounted:mcpLaunchInvalid ${mcpLaunchContext.value.error ?? 'unknown'}`)
@@ -315,6 +323,7 @@ onUnmounted(() => {
               :mcp-request="mcpRequest" :show-mcp-popup="showMcpPopup" :app-config="appConfig"
               :is-initializing="isInitializing" :is-muted="isMuted"
               @mcp-response="handlers.onMcpResponse" @mcp-cancel="handlers.onMcpCancel"
+              @mcp-close-current-dialog="handlers.onMcpCloseCurrentDialog"
               @theme-change="handlers.onThemeChange" @toggle-always-on-top="handlers.onToggleAlwaysOnTop"
               @toggle-mute="handlers.onToggleMute"
               @toggle-audio-notification="handlers.onToggleAudioNotification"

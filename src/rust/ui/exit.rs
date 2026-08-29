@@ -157,8 +157,16 @@ pub async fn handle_system_exit_request(
         if state.exit_in_progress.swap(true, Ordering::SeqCst) {
             return Ok(true);
         }
+        #[cfg(target_os = "windows")]
+        if let Err(error) = crate::app::windows_lifecycle::request_global_shutdown() {
+            log_important!(
+                error,
+                "请求 Windows 全部退出失败，将继续退出当前实例: {}",
+                error
+            );
+        }
         cancel_pending_mcp_requests(state.inner())?;
-        perform_exit(app.clone()).await?;
+        perform_exit(app.clone(), cfg!(target_os = "windows")).await?;
         return Ok(true);
     }
 
@@ -170,7 +178,7 @@ pub async fn handle_system_exit_request(
             return Ok(true);
         }
         cancel_pending_mcp_requests(state.inner())?;
-        perform_exit(app.clone()).await?;
+        perform_exit(app.clone(), false).await?;
         Ok(true)
     } else if show_warning {
         // 发送警告消息到前端
@@ -198,15 +206,34 @@ pub async fn handle_system_exit_request(
 }
 
 /// 执行实际的退出操作
-async fn perform_exit(app: AppHandle) -> Result<(), String> {
+async fn perform_exit(app: AppHandle, shutdown_all: bool) -> Result<(), String> {
     // 立即隐藏窗口，让用户得到明确反馈；不要再次调用 close()，否则会递归触发
     // CloseRequested 事件。
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.hide();
     }
 
-    // 给已取消请求和日志一个很短的收尾窗口，随后终止整个应用运行时。
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    if shutdown_all {
+        let current_pid = std::process::id();
+        let summary = tauri::async_runtime::spawn_blocking(move || {
+            crate::app::windows_lifecycle::terminate_registered_instances(
+                Duration::from_millis(500),
+                Some(current_pid),
+            )
+        })
+        .await
+        .map_err(|error| format!("等待 Windows 实例退出失败: {error}"))?;
+        log_important!(
+            info,
+            "Windows 全部退出收尾: terminated={}, stale_removed={}, rejected={}",
+            summary.terminated,
+            summary.stale_removed,
+            summary.rejected
+        );
+    } else {
+        // 给已取消请求和日志一个很短的收尾窗口，随后终止当前应用运行时。
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    }
     app.exit(0);
     Ok(())
 }
@@ -219,7 +246,7 @@ pub async fn force_exit_app(app: AppHandle) -> Result<(), String> {
         return Ok(());
     }
     cancel_pending_mcp_requests(state.inner())?;
-    perform_exit(app).await
+    perform_exit(app, false).await
 }
 
 /// Tauri命令：重置退出尝试计数器
