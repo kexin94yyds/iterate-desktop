@@ -3,7 +3,7 @@
 这份文档只保留当前主方案下仍然有用的排查路径。
 
 如果你是普通用户，优先使用：
-- `docs/iterate_安装指南.md`
+- `docs/INSTALLATION.md`
 - 安装包里的 `INSTALLATION.md`
 
 下面这些内容更适合开发者、接入者和排障场景。
@@ -103,6 +103,6 @@ pnpm exec eslint src/frontend/components/tabs/PromptsTab.vue
 
 ## 相关文档
 
-- [docs/iterate_安装指南.md](docs/iterate_安装指南.md)
+- [docs/INSTALLATION.md](docs/INSTALLATION.md)
 - [MCP_INSTALL.md](MCP_INSTALL.md)
 - [MCP_SERVER.md](MCP_SERVER.md)

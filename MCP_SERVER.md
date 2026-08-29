@@ -4,7 +4,7 @@
 
 如果你是在给普通用户做安装交付，优先使用：
 - `install.sh`
-- `docs/iterate_安装指南.md`
+- `docs/INSTALLATION.md`
 
 只有在下面这些场景，才建议直接看本文件：
 - 你在开发或调试 `mcp-server`
@@ -109,4 +109,4 @@ tool_timeout_sec = 315360000
 
 - [MCP_INSTALL.md](MCP_INSTALL.md)
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-- [docs/iterate_安装指南.md](docs/iterate_安装指南.md)
+- [docs/INSTALLATION.md](docs/INSTALLATION.md)
