@@ -391,7 +391,10 @@ async function syncWindowRegistration(projectPath?: string | null, request?: any
     title: resolveRequestMessage(request),
   })
   const window = getCurrentWindow()
-  await window.setTitle(`iterate - ${resolvedProjectPath}`)
+  const title = navigator.platform.toUpperCase().includes('WIN')
+    ? 'iterate'
+    : `iterate - ${resolvedProjectPath}`
+  await window.setTitle(title)
 }
 
 function normalizeRequestId(request: any): string | null {
