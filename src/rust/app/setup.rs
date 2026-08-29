@@ -2,22 +2,23 @@ use crate::bridge::start_bridge_server;
 use crate::config::{load_config_and_apply_window_settings, AppState};
 use crate::ipc::start_ipc_server;
 use crate::log_important;
-use crate::ui::exit_handler::setup_exit_handlers;
-use crate::ui::{
-    initialize_audio_asset_manager, migrate_legacy_custom_audio, setup_window_event_listeners,
-};
+use crate::ui::{initialize_audio_asset_manager, migrate_legacy_custom_audio};
 use chrono::Local;
+use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 
 /// 全局变量：追踪最后聚焦的窗口 label
 pub static LAST_FOCUSED_WINDOW: RwLock<Option<String>> = RwLock::new(None);
+static STARTUP_STATUS: Lazy<RwLock<StartupStatus>> =
+    Lazy::new(|| RwLock::new(StartupStatus::starting("正在启动后台服务")));
+static BACKGROUND_RETRY_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 static LAST_SELF_HEAL_AT: AtomicU64 = AtomicU64::new(0);
 static LAST_FAILED_BRIDGE_RECOVER_AT: AtomicU64 = AtomicU64::new(0);
 static BRIDGE_ORIGIN_TRACKER: Mutex<BridgeOriginTracker> = Mutex::new(BridgeOriginTracker {
@@ -36,6 +37,51 @@ const CONNECTION_STATUS_TIMEOUT_SECS: u64 = 3;
 const PUBLIC_FALLBACK_HEALTH_TIMEOUT_SECS: u64 = 3;
 const CONNECTION_STATUS_URL: &str = "http://127.0.0.1:8080/api/connection-status";
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupStatus {
+    pub phase: String,
+    pub message: String,
+}
+
+impl StartupStatus {
+    fn starting(message: impl Into<String>) -> Self {
+        Self {
+            phase: "starting".to_string(),
+            message: message.into(),
+        }
+    }
+
+    fn ready() -> Self {
+        Self {
+            phase: "ready".to_string(),
+            message: "后台服务已就绪".to_string(),
+        }
+    }
+
+    fn degraded(message: impl Into<String>) -> Self {
+        Self {
+            phase: "degraded".to_string(),
+            message: message.into(),
+        }
+    }
+}
+
+fn publish_startup_status(app_handle: &AppHandle, status: StartupStatus) {
+    if let Ok(mut current) = STARTUP_STATUS.write() {
+        *current = status.clone();
+    }
+    let _ = app_handle.emit("startup-status-changed", status);
+}
+
+#[tauri::command]
+pub fn get_startup_status() -> StartupStatus {
+    STARTUP_STATUS
+        .read()
+        .map(|status| status.clone())
+        .unwrap_or_else(|_| StartupStatus::degraded("无法读取后台服务状态"))
+}
+
 fn instance_debug_log(tag: &str, message: impl AsRef<str>) {
     let line = format!(
         "{} [app-setup:{}] {} {}\n",
@@ -44,11 +90,8 @@ fn instance_debug_log(tag: &str, message: impl AsRef<str>) {
         tag,
         message.as_ref()
     );
-    if let Ok(mut file) = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("/tmp/iterate-instance-debug.log")
-    {
+    let path = std::env::temp_dir().join("iterate-instance-debug.log");
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
         let _ = file.write_all(line.as_bytes());
     }
 }
@@ -71,8 +114,15 @@ pub fn get_last_focused_window() -> Option<String> {
 const BRIDGE_DAEMON_LABEL: &str = "com.cunzhi.iterate.bridge";
 
 fn command_stdout(command: &str, args: &[&str]) -> Option<String> {
-    std::process::Command::new(command)
-        .args(args)
+    let mut child = std::process::Command::new(command);
+    child.args(args);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        child.creation_flags(CREATE_NO_WINDOW);
+    }
+    child
         .output()
         .ok()
         .filter(|output| output.status.success())
@@ -80,8 +130,20 @@ fn command_stdout(command: &str, args: &[&str]) -> Option<String> {
 }
 
 fn bridge_http_healthy(port: u16) -> bool {
-    let url = format!("http://127.0.0.1:{}/api/version", port);
-    command_stdout("curl", &["--noproxy", "*", "-fsS", "-m", "2", &url])
+    let url = format!("http://127.0.0.1:{port}/api/version");
+    let Ok(client) = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .no_proxy()
+        .build()
+    else {
+        return false;
+    };
+
+    client
+        .get(url)
+        .send()
+        .and_then(|response| response.error_for_status())
+        .and_then(|response| response.text())
         .map(|body| body.contains("iterate"))
         .unwrap_or(false)
 }
@@ -1117,6 +1179,7 @@ mod tests {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 fn start_connectivity_watchdog(app_handle: AppHandle) {
     let startup_grace_until = unix_now_secs().saturating_add(WATCHDOG_STARTUP_GRACE_SECS);
     tauri::async_runtime::spawn(async move {
@@ -1297,19 +1360,159 @@ fn start_connectivity_watchdog(app_handle: AppHandle) {
     });
 }
 
+#[cfg(target_os = "windows")]
+fn start_connectivity_watchdog(app_handle: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(WATCHDOG_INTERVAL_SECS));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        let mut consecutive_failures = 0u32;
+        let mut was_unhealthy = false;
+
+        loop {
+            interval.tick().await;
+            let healthy = tauri::async_runtime::spawn_blocking(|| bridge_http_healthy(8080))
+                .await
+                .unwrap_or(false);
+
+            if healthy {
+                consecutive_failures = 0;
+                if was_unhealthy {
+                    log_important!(info, "[Watchdog] Windows Bridge 已恢复");
+                    publish_startup_status(&app_handle, StartupStatus::ready());
+                }
+                was_unhealthy = false;
+                continue;
+            }
+
+            consecutive_failures = consecutive_failures.saturating_add(1);
+            if consecutive_failures < 3 {
+                continue;
+            }
+
+            consecutive_failures = 0;
+            was_unhealthy = true;
+            log_important!(
+                warn,
+                "[Watchdog] Windows Bridge 连续三次不可用，尝试仅恢复 Bridge"
+            );
+            publish_startup_status(&app_handle, StartupStatus::starting("Bridge 正在自动恢复"));
+
+            let bridge_app = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) = start_bridge_server(bridge_app, 8080).await {
+                    log_important!(warn, "[Watchdog] Bridge 恢复启动失败: {}", error);
+                }
+            });
+
+            for delay_secs in [1u64, 2, 4] {
+                tokio::time::sleep(Duration::from_secs(delay_secs)).await;
+                let recovered = tauri::async_runtime::spawn_blocking(|| bridge_http_healthy(8080))
+                    .await
+                    .unwrap_or(false);
+                if recovered {
+                    break;
+                }
+            }
+
+            let recovered = tauri::async_runtime::spawn_blocking(|| bridge_http_healthy(8080))
+                .await
+                .unwrap_or(false);
+            if !recovered {
+                publish_startup_status(
+                    &app_handle,
+                    StartupStatus::degraded("Bridge 暂不可用，可点击重试"),
+                );
+            }
+        }
+    });
+}
+
 /// 应用设置和初始化
+fn is_standalone_process() -> bool {
+    let args: Vec<String> = std::env::args().collect();
+    std::env::var("ITERATE_STANDALONE_MODE").is_ok()
+        || std::env::var("ITERATE_MCP_REQUEST_FILE").is_ok()
+        || args.get(1).is_some_and(|arg| arg == "--mcp-request")
+}
+
+async fn wait_for_bridge_ready() -> bool {
+    for _ in 0..20 {
+        let healthy = tauri::async_runtime::spawn_blocking(|| bridge_http_healthy(8080))
+            .await
+            .unwrap_or(false);
+        if healthy {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+    false
+}
+
+pub fn start_application_setup(app_handle: AppHandle) {
+    publish_startup_status(
+        &app_handle,
+        StartupStatus::starting("正在初始化应用和后台服务"),
+    );
+    tauri::async_runtime::spawn(async move {
+        match setup_application(&app_handle).await {
+            Ok(()) if is_standalone_process() || wait_for_bridge_ready().await => {
+                publish_startup_status(&app_handle, StartupStatus::ready());
+            }
+            Ok(()) => {
+                publish_startup_status(
+                    &app_handle,
+                    StartupStatus::degraded("界面已就绪，Bridge 暂不可用，可点击重试"),
+                );
+            }
+            Err(error) => {
+                log_important!(error, "应用初始化失败: {}", error);
+                publish_startup_status(
+                    &app_handle,
+                    StartupStatus::degraded(format!("后台服务启动失败: {}", error)),
+                );
+            }
+        }
+    });
+}
+
+#[tauri::command]
+pub async fn retry_background_services(app_handle: AppHandle) -> Result<StartupStatus, String> {
+    if BACKGROUND_RETRY_IN_FLIGHT.swap(true, Ordering::SeqCst) {
+        return Ok(get_startup_status());
+    }
+
+    publish_startup_status(
+        &app_handle,
+        StartupStatus::starting("正在重试 Bridge 后台服务"),
+    );
+
+    if !bridge_http_healthy(8080) {
+        let bridge_app = app_handle.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(error) = start_bridge_server(bridge_app, 8080).await {
+                log_important!(warn, "手动重试 Bridge 启动失败: {}", error);
+            }
+        });
+    }
+
+    let ready = wait_for_bridge_ready().await;
+    BACKGROUND_RETRY_IN_FLIGHT.store(false, Ordering::SeqCst);
+    let status = if ready {
+        StartupStatus::ready()
+    } else {
+        StartupStatus::degraded("Bridge 仍不可用，请检查 8080 端口占用")
+    };
+    publish_startup_status(&app_handle, status.clone());
+    Ok(status)
+}
+
 pub async fn setup_application(app_handle: &AppHandle) -> Result<(), String> {
     let state = app_handle.state::<AppState>();
 
     // Standalone 子进程（--serve 启动的 GUI 弹窗）不启动 bridge/browser/IPC server，
     // 这些服务由主 app 进程管理。子进程抢占 8080 端口会导致 iOS WS 断连。
     let args: Vec<String> = std::env::args().collect();
-    let is_standalone = std::env::var("ITERATE_STANDALONE_MODE").is_ok()
-        || std::env::var("ITERATE_MCP_REQUEST_FILE").is_ok()
-        || args
-            .get(1)
-            .map(|arg| arg == "--mcp-request")
-            .unwrap_or(false);
+    let is_standalone = is_standalone_process();
     instance_debug_log(
         "[setup-begin]",
         format!("is_standalone={}, args={:?}", is_standalone, args),
@@ -1326,6 +1529,9 @@ pub async fn setup_application(app_handle: &AppHandle) -> Result<(), String> {
 
     if !is_standalone {
         // 检查 daemon 是否已在 8080 运行（--bridge-only 模式）
+        #[cfg(target_os = "windows")]
+        let daemon_owns_port = false;
+        #[cfg(not(target_os = "windows"))]
         let daemon_owns_port = ensure_bridge_daemon_owns_port(8080, "setup_application").await;
         if daemon_owns_port {
             log_important!(
@@ -1379,14 +1585,6 @@ pub async fn setup_application(app_handle: &AppHandle) -> Result<(), String> {
     // 初始化音频资源管理器
     if let Err(e) = initialize_audio_asset_manager(app_handle) {
         log_important!(warn, "初始化音频资源管理器失败: {}", e);
-    }
-
-    // 设置窗口事件监听器
-    setup_window_event_listeners(app_handle);
-
-    // 设置退出处理器
-    if let Err(e) = setup_exit_handlers(app_handle) {
-        log_important!(warn, "设置退出处理器失败: {}", e);
     }
 
     // 注册全局快捷键：Shift+Cmd+K 截图
