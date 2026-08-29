@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { mkdtemp, mkdir, readFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -33,6 +34,10 @@ function pngDimensions(bytes) {
   }
 }
 
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex')
+}
+
 test('public README uses coiterate ownership and current product and community images', async () => {
   const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8')
   const windowsSetup = await readFile(new URL('../WINDOWS_SETUP_FOR_AI.md', import.meta.url), 'utf8')
@@ -60,6 +65,7 @@ test('public README uses coiterate ownership and current product and community i
   assert.deepEqual(pngDimensions(hero), { width: 2326, height: 914 })
   assert.deepEqual(pngDimensions(desktop), { width: 1200, height: 1606 })
   assert.deepEqual(pngDimensions(mobile), { width: 1284, height: 2778 })
+  assert.equal(sha256(mobile), '4c93e6eb6e937e7ae5ed01dc6ec57bc835ecb5151d1a6b842443898b8085affb')
   assert.deepEqual(pngDimensions(wechat), { width: 850, height: 850 })
   assert.deepEqual(pngDimensions(qq), { width: 981, height: 981 })
 })
