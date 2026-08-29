@@ -41,8 +41,9 @@ resolve_cargo_target_dir() {
 }
 
 CARGO_TARGET_DIR_RESOLVED="$(resolve_cargo_target_dir)"
-PROMPT_SOURCE="${REPO_ROOT}/docs/release/INSTALL_PROMPT.md"
-INSTALLATION_SOURCE="${REPO_ROOT}/docs/release/INSTALLATION.md"
+PROMPT_SOURCE="${REPO_ROOT}/docs/INSTALL_PROMPT.md"
+SYSTEM_PROMPT_SOURCE="${REPO_ROOT}/docs/SYSTEM_PROMPT.md"
+INSTALLATION_SOURCE="${REPO_ROOT}/docs/INSTALLATION.md"
 BUNDLE_MACOS_DIR="${CARGO_TARGET_DIR_RESOLVED}/release/bundle/macos"
 BUNDLE_DMG_DIR="${CARGO_TARGET_DIR_RESOLVED}/release/bundle/dmg"
 DELIVERY_DIR="${REPO_ROOT}/target/release/delivery/macos"
@@ -200,6 +201,10 @@ create_delivery_dmg() {
     cp "${PROMPT_SOURCE}" "${stage_dir}/INSTALL_PROMPT.md"
   fi
 
+  if [[ -f "${SYSTEM_PROMPT_SOURCE}" ]]; then
+    cp "${SYSTEM_PROMPT_SOURCE}" "${stage_dir}/SYSTEM_PROMPT.md"
+  fi
+
   rm -f "${output_dmg_path}"
   hdiutil create \
     -volname "iterate" \
@@ -248,6 +253,11 @@ if [[ ! -f "${INSTALLATION_SOURCE}" ]]; then
   exit 1
 fi
 
+if [[ ! -f "${SYSTEM_PROMPT_SOURCE}" ]]; then
+  echo "Missing system prompt source: ${SYSTEM_PROMPT_SOURCE}" >&2
+  exit 1
+fi
+
 if [[ ! -d "${APP_PATH}" ]]; then
   echo "Missing built app: ${APP_PATH}" >&2
   exit 1
@@ -289,6 +299,9 @@ mkdir -p "${DELIVERY_DIR}"
 cp "${PROMPT_SOURCE}" "${DELIVERY_DIR}/INSTALL_PROMPT.md"
 cp "${PROMPT_SOURCE}" "${BUNDLE_MACOS_DIR}/INSTALL_PROMPT.md"
 cp "${PROMPT_SOURCE}" "${BUNDLE_DMG_DIR}/INSTALL_PROMPT.md"
+cp "${SYSTEM_PROMPT_SOURCE}" "${DELIVERY_DIR}/SYSTEM_PROMPT.md"
+cp "${SYSTEM_PROMPT_SOURCE}" "${BUNDLE_MACOS_DIR}/SYSTEM_PROMPT.md"
+cp "${SYSTEM_PROMPT_SOURCE}" "${BUNDLE_DMG_DIR}/SYSTEM_PROMPT.md"
 cp "${INSTALLATION_SOURCE}" "${DELIVERY_DIR}/INSTALLATION.md"
 cp "${INSTALLATION_SOURCE}" "${BUNDLE_MACOS_DIR}/INSTALLATION.md"
 cp "${INSTALLATION_SOURCE}" "${BUNDLE_DMG_DIR}/INSTALLATION.md"
@@ -300,6 +313,7 @@ printf 'Prepared macOS delivery files:\n'
 printf ' - %s\n' "${DELIVERY_DIR}/iterate.app.zip"
 printf ' - %s\n' "${DELIVERY_DIR}/INSTALLATION.md"
 printf ' - %s\n' "${DELIVERY_DIR}/INSTALL_PROMPT.md"
+printf ' - %s\n' "${DELIVERY_DIR}/SYSTEM_PROMPT.md"
 printf ' - %s\n' "${DELIVERY_DIR}/$(basename "${DMG_PATH}")"
 printf '\n'
 printf 'Note: the app zip and DMG are prepared from the current app bundle after cleanup/signing.\n'

@@ -93,6 +93,8 @@ Require-File (Join-Path $AppDir "WebView2Loader.dll") "WebView2 loader"
 Require-File (Join-Path $PackageDir "Install iterate.bat") "install helper"
 Require-File (Join-Path $PackageDir "Start iterate.bat") "start helper"
 Require-File (Join-Path $PackageDir "INSTALLATION.md") "installation guide"
+Require-File (Join-Path $PackageDir "INSTALL_PROMPT.md") "installation assistant prompt"
+Require-File (Join-Path $PackageDir "SYSTEM_PROMPT.md") "generic system prompt"
 
 Require-X64Pe (Join-Path $AppDir "iterate.exe") "iterate executable"
 Require-X64Pe (Join-Path $AppDir "mcp-server.exe") "mcp-server executable"

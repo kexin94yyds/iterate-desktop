@@ -143,7 +143,9 @@ jobs:
             cp "$TARGET_DIR/iterate.exe" cli-package/app/
             cp "$TARGET_DIR/mcp-server.exe" cli-package/app/
             cp "$WEBVIEW2_LOADER" cli-package/app/WebView2Loader.dll
-            cp "docs/iterate_安装指南.md" "cli-package/INSTALLATION.md"
+            cp "docs/INSTALLATION.md" "cli-package/INSTALLATION.md"
+            cp "docs/INSTALL_PROMPT.md" "cli-package/INSTALL_PROMPT.md"
+            cp "docs/SYSTEM_PROMPT.md" "cli-package/SYSTEM_PROMPT.md"
             cp "release-package/windows/Install iterate.bat" "cli-package/Install iterate.bat"
             cp "release-package/windows/Start iterate.bat" "cli-package/Start iterate.bat"
             cd cli-package
@@ -153,7 +155,9 @@ jobs:
             cp "$TARGET_DIR/iterate" cli-package/
             cp "$TARGET_DIR/mcp-server" cli-package/
             cp "install.sh" cli-package/
-            cp "docs/iterate_安装指南.md" "cli-package/INSTALLATION.md"
+            cp "docs/INSTALLATION.md" "cli-package/INSTALLATION.md"
+            cp "docs/INSTALL_PROMPT.md" "cli-package/INSTALL_PROMPT.md"
+            cp "docs/SYSTEM_PROMPT.md" "cli-package/SYSTEM_PROMPT.md"
             cd cli-package
             tar -czf ../iterate-package-${TAG_NAME}-${{ matrix.name }}.tar.gz *
           fi
@@ -296,6 +300,7 @@ jobs:
           cp "${ZIP_PATH}" release-assets/iterate-macos.zip
           cp target/release/delivery/macos/INSTALLATION.md release-assets/INSTALLATION.md
           cp target/release/delivery/macos/INSTALL_PROMPT.md release-assets/INSTALL_PROMPT.md
+          cp target/release/delivery/macos/SYSTEM_PROMPT.md release-assets/SYSTEM_PROMPT.md
 
       - name: Upload notarized GUI artifacts
         if: steps.macos_secrets.outputs.available == 'true'
@@ -392,6 +397,7 @@ jobs:
           WIN_ZIP="$(find artifacts -type f -name 'iterate-package-*-windows-x86_64.zip' | head -n 1)"
           INSTALLATION_DOC="$(find artifacts -type f -name 'INSTALLATION.md' | head -n 1)"
           INSTALL_PROMPT_DOC="$(find artifacts -type f -name 'INSTALL_PROMPT.md' | head -n 1)"
+          SYSTEM_PROMPT_DOC="$(find artifacts -type f -name 'SYSTEM_PROMPT.md' | head -n 1)"
 
           if [[ -z "${MAC_DMG}" || -z "${MAC_ZIP}" ]]; then
             echo "Fresh notarized macOS DMG and ZIP artifacts are required; refusing to reuse a prior public artifact."
@@ -413,13 +419,19 @@ jobs:
           if [[ -n "${INSTALLATION_DOC}" ]]; then
             cp "${INSTALLATION_DOC}" stable-assets/INSTALLATION.md
           else
-            cp docs/release/INSTALLATION.md stable-assets/INSTALLATION.md
+            cp docs/INSTALLATION.md stable-assets/INSTALLATION.md
           fi
 
           if [[ -n "${INSTALL_PROMPT_DOC}" ]]; then
             cp "${INSTALL_PROMPT_DOC}" stable-assets/INSTALL_PROMPT.md
           else
-            cp docs/release/INSTALL_PROMPT.md stable-assets/INSTALL_PROMPT.md
+            cp docs/INSTALL_PROMPT.md stable-assets/INSTALL_PROMPT.md
+          fi
+
+          if [[ -n "${SYSTEM_PROMPT_DOC}" ]]; then
+            cp "${SYSTEM_PROMPT_DOC}" stable-assets/SYSTEM_PROMPT.md
+          else
+            cp docs/SYSTEM_PROMPT.md stable-assets/SYSTEM_PROMPT.md
           fi
 
       - name: Sign public release assets and write provenance

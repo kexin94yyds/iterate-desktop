@@ -117,7 +117,9 @@ jobs:
 
           Copy-Item "target\\release\\mcp-server.exe" "$appDir\\"
           Copy-Item -LiteralPath $webViewLoaderPath "$appDir\\WebView2Loader.dll"
-          Copy-Item "docs\\iterate_安装指南.md" "$packageDir\\INSTALLATION.md"
+          Copy-Item "docs\\INSTALLATION.md" "$packageDir\\INSTALLATION.md"
+          Copy-Item "docs\\INSTALL_PROMPT.md" "$packageDir\\INSTALL_PROMPT.md"
+          Copy-Item "docs\\SYSTEM_PROMPT.md" "$packageDir\\SYSTEM_PROMPT.md"
           Copy-Item "release-package\\windows\\Install iterate.bat" "$packageDir\\Install iterate.bat"
           Copy-Item "release-package\\windows\\Start iterate.bat" "$packageDir\\Start iterate.bat"
 

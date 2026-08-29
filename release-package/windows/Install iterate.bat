@@ -38,6 +38,14 @@ if exist "%SCRIPT_DIR%INSTALLATION.md" (
   copy /Y "%SCRIPT_DIR%INSTALLATION.md" "%INSTALL_DIR%\INSTALLATION.md" >nul
 )
 
+if exist "%SCRIPT_DIR%INSTALL_PROMPT.md" (
+  copy /Y "%SCRIPT_DIR%INSTALL_PROMPT.md" "%INSTALL_DIR%\INSTALL_PROMPT.md" >nul
+)
+
+if exist "%SCRIPT_DIR%SYSTEM_PROMPT.md" (
+  copy /Y "%SCRIPT_DIR%SYSTEM_PROMPT.md" "%INSTALL_DIR%\SYSTEM_PROMPT.md" >nul
+)
+
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ws = New-Object -ComObject WScript.Shell; " ^
   "$shortcut = $ws.CreateShortcut('%SHORTCUT_PATH%'); " ^
@@ -53,7 +61,8 @@ echo.
 echo Next:
 echo 1. Double-click the desktop shortcut or run "Start iterate.bat"
 echo 2. Open INSTALLATION.md to connect your client
-echo 3. Restart Windsurf / Cursor / Codex after setup
+echo 3. Add SYSTEM_PROMPT.md to your client's system prompt or rules
+echo 4. Restart Windsurf / Cursor / Codex after setup
 echo.
 pause
 exit /b 0

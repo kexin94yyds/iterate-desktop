@@ -54,7 +54,10 @@ test('PromptsTab reuses the verified iPhone route prompt in a focused copy card'
   assert.match(source, /await navigator\.clipboard\.writeText\(iphoneQrPromptContent\)/)
   assert.match(source, /message\.success\('配置提示词已复制'\)/)
   assert.match(source, /iterate 安装/)
-  assert.match(source, /核心系统提示词/)
+  assert.match(source, /通用系统提示词/)
+  assert.match(source, /macOS 安装/)
+  assert.match(source, /Windows 安装/)
+  assert.match(source, /不依赖个人知识库/)
   assert.match(mobilePromptSource, /当前电脑上的 iterate/)
   assert.match(mobilePromptSource, /macOS、Windows 还是 Linux/)
   assert.match(mobilePromptSource, /%USERPROFILE%\\\\\.cloudflared/)
@@ -67,7 +70,7 @@ test('PromptsTab reuses the verified iPhone route prompt in a focused copy card'
   const usageCard = source.indexOf('<!-- 使用说明书卡片 -->')
   const installCard = source.indexOf('<!-- iterate 安装卡片 -->')
   const iphoneCard = source.indexOf('<!-- iPhone 连接配置卡片 -->')
-  const systemCard = source.indexOf('<!-- 核心系统提示词卡片 -->')
+  const systemCard = source.indexOf('<!-- 通用系统提示词卡片 -->')
   assert.ok(
     usageCard < installCard && installCard < iphoneCard && iphoneCard < systemCard,
     'cards must follow usage, install, iPhone setup, then system prompt',
