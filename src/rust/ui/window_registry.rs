@@ -1,9 +1,12 @@
 use crate::log_important;
+#[cfg(target_os = "windows")]
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::fs::OpenOptions;
+#[cfg(unix)]
+use std::os::fd::AsRawFd;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process;
@@ -191,6 +194,8 @@ fn update_registry_at_path(
     cleanup_stale: bool,
     mutate: impl FnOnce(&mut WindowRegistry),
 ) -> Result<WindowRegistry, String> {
+    #[cfg(not(target_os = "windows"))]
+    let _ = cleanup_stale;
     let lock_path = path.with_extension("json.lock");
     let lock_file = OpenOptions::new()
         .read(true)
@@ -199,23 +204,41 @@ fn update_registry_at_path(
         .open(&lock_path)
         .map_err(|error| format!("打开窗口注册表锁失败: {}", error))?;
 
+    #[cfg(target_os = "windows")]
     lock_file
         .lock_exclusive()
         .map_err(|error| format!("锁定窗口注册表失败: {}", error))?;
+    #[cfg(unix)]
+    if unsafe { libc::flock(lock_file.as_raw_fd(), libc::LOCK_EX) } != 0 {
+        return Err(format!(
+            "锁定窗口注册表失败: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
 
     let mut registry = load_registry_from_path(path);
+    #[cfg(target_os = "windows")]
     let original = registry.clone();
+    #[cfg(target_os = "windows")]
     if cleanup_stale {
         registry.cleanup_stale_instances();
     }
+    #[cfg(not(target_os = "windows"))]
+    registry.cleanup_stale_instances();
     mutate(&mut registry);
+    #[cfg(target_os = "windows")]
     let save_result = if registry == original {
         Ok(())
     } else {
         save_registry_atomically(path, &registry)
     };
+    #[cfg(not(target_os = "windows"))]
+    let save_result = save_registry_atomically(path, &registry);
 
+    #[cfg(target_os = "windows")]
     let _ = FileExt::unlock(&lock_file);
+    #[cfg(unix)]
+    let _ = unsafe { libc::flock(lock_file.as_raw_fd(), libc::LOCK_UN) };
 
     save_result.map(|_| registry)
 }

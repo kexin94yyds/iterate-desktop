@@ -2,6 +2,10 @@ use crate::bridge::start_bridge_server;
 use crate::config::{load_config_and_apply_window_settings, AppState};
 use crate::ipc::start_ipc_server;
 use crate::log_important;
+#[cfg(not(target_os = "windows"))]
+use crate::ui::exit_handler::setup_exit_handlers;
+#[cfg(not(target_os = "windows"))]
+use crate::ui::setup_window_event_listeners;
 use crate::ui::{initialize_audio_asset_manager, migrate_legacy_custom_audio};
 use chrono::Local;
 use once_cell::sync::Lazy;
@@ -90,7 +94,10 @@ fn instance_debug_log(tag: &str, message: impl AsRef<str>) {
         tag,
         message.as_ref()
     );
+    #[cfg(target_os = "windows")]
     let path = std::env::temp_dir().join("iterate-instance-debug.log");
+    #[cfg(not(target_os = "windows"))]
+    let path = PathBuf::from("/tmp/iterate-instance-debug.log");
     if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
         let _ = file.write_all(line.as_bytes());
     }
@@ -129,6 +136,7 @@ fn command_stdout(command: &str, args: &[&str]) -> Option<String> {
         .and_then(|output| String::from_utf8(output.stdout).ok())
 }
 
+#[cfg(target_os = "windows")]
 fn bridge_http_healthy(port: u16) -> bool {
     let url = format!("http://127.0.0.1:{port}/api/version");
     let Ok(client) = reqwest::blocking::Client::builder()
@@ -144,6 +152,14 @@ fn bridge_http_healthy(port: u16) -> bool {
         .send()
         .and_then(|response| response.error_for_status())
         .and_then(|response| response.text())
+        .map(|body| body.contains("iterate"))
+        .unwrap_or(false)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn bridge_http_healthy(port: u16) -> bool {
+    let url = format!("http://127.0.0.1:{}/api/version", port);
+    command_stdout("curl", &["--noproxy", "*", "-fsS", "-m", "2", &url])
         .map(|body| body.contains("iterate"))
         .unwrap_or(false)
 }
@@ -1585,6 +1601,16 @@ pub async fn setup_application(app_handle: &AppHandle) -> Result<(), String> {
     // 初始化音频资源管理器
     if let Err(e) = initialize_audio_asset_manager(app_handle) {
         log_important!(warn, "初始化音频资源管理器失败: {}", e);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Preserve the established macOS/Linux initialization order. Windows
+        // installs these listeners before its asynchronous setup begins.
+        setup_window_event_listeners(app_handle);
+        if let Err(error) = setup_exit_handlers(app_handle) {
+            log_important!(warn, "设置退出处理器失败: {}", error);
+        }
     }
 
     // 注册全局快捷键：Shift+Cmd+K 截图

@@ -12,18 +12,19 @@ test('Windows registry liveness check does not spawn tasklist', () => {
   assert.match(registry, /OpenProcess\(PROCESS_QUERY_LIMITED_INFORMATION/)
 })
 
-test('bridge health probe uses reqwest and does not spawn curl', () => {
+test('bridge health probe uses reqwest only on Windows and preserves the Unix curl path', () => {
   const setup = source('src/rust/app/setup.rs')
-  assert.doesNotMatch(setup, /command_stdout\("curl"/)
-  assert.match(setup, /reqwest::blocking::Client::builder/)
+  assert.match(setup, /#\[cfg\(target_os = "windows"\)\]\s*fn bridge_http_healthy[\s\S]*?reqwest::blocking::Client::builder/)
+  assert.match(setup, /#\[cfg\(not\(target_os = "windows"\)\)\]\s*fn bridge_http_healthy[\s\S]*?command_stdout\("curl"/)
 })
 
-test('main window is shown before background setup starts', () => {
+test('Windows shows the main window before background setup while non-Windows keeps blocking setup', () => {
   const builder = source('src/rust/app/builder.rs')
-  assert.doesNotMatch(builder, /async_runtime::block_on/)
   const showIndex = builder.indexOf('window.show()')
   const setupIndex = builder.lastIndexOf('start_application_setup(app_handle)')
   assert.ok(showIndex >= 0 && setupIndex > showIndex)
+  assert.match(builder, /#\[cfg\(target_os = "windows"\)\][\s\S]*?start_application_setup\(app_handle\)/)
+  assert.match(builder, /#\[cfg\(not\(target_os = "windows"\)\)\][\s\S]*?async_runtime::block_on/)
 })
 
 test('window registry cleanup runs off the UI thread at low frequency', () => {
@@ -37,8 +38,20 @@ test('window registry cleanup runs off the UI thread at low frequency', () => {
 test('close flow exits without recursively closing the window', () => {
   const exit = source('src/rust/ui/exit.rs')
   assert.match(exit, /exit_in_progress\.swap/)
-  assert.doesNotMatch(exit, /window\.close\(\)/)
-  assert.match(exit, /window\.hide\(\)/)
+  assert.match(exit, /#\[cfg\(target_os = "windows"\)\][\s\S]*?window\.hide\(\)/)
+  assert.match(exit, /#\[cfg\(not\(target_os = "windows"\)\)\][\s\S]*?window\.close\(\)/)
+})
+
+test('frontend and package defaults preserve macOS behavior', () => {
+  const app = source('src/frontend/App.vue')
+  const content = source('src/frontend/components/AppContent.vue')
+  const settings = source('src/frontend/composables/useSettings.ts')
+  const pkg = JSON.parse(source('package.json'))
+  assert.match(app, /windowsPlatform && startupStatus\.phase !== 'ready'/)
+  assert.match(content, /\? 'iterate'\s*: `iterate - \$\{resolvedProjectPath\}`/)
+  assert.match(settings, /if \(!windowsPlatform\)[\s\S]*?reloadAllSettings\(\)/)
+  assert.equal(pkg.scripts.tauri, 'cargo tauri')
+  assert.equal(pkg.scripts['tauri:build'], 'cargo tauri build')
 })
 
 test('Windows bundle uses a current-user NSIS installer', () => {

@@ -58,7 +58,6 @@ rmcp = { version = "1.4.0", default-features = false, features = [
 schemars = "0.8"
 rodio = "0.19"
 reqwest = { version = "0.12.24", default-features = false, features = [
-  "blocking",
   "stream",
   "json",
   "native-tls-alpn"
@@ -96,7 +95,6 @@ tower-http = { version = "0.5", features = [
 parking_lot = "0.12" # 高效的同步原语，用于 zhi 授权状态追踪
 portable-pty = "0.9.0"
 tempfile = "3.10"
-fs2 = "0.4"
 openssl = { version = "0.10.80", features = ["vendored"] }
 native-tls = "0.2"
 rusqlite = { version = "0.39.0", features = ["bundled"] }
@@ -127,6 +125,13 @@ objc = "0.2.7"
 security-framework = "3.7"
 
 [target.'cfg(target_os = "windows")'.dependencies]
+fs2 = "0.4"
+reqwest = { version = "0.12.24", default-features = false, features = [
+  "blocking",
+  "stream",
+  "json",
+  "native-tls-alpn"
+] }
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_System_Threading"

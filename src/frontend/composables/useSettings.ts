@@ -15,6 +15,7 @@ const DEFAULT_LOOP_PROMPT = `进入 GoalRun 目标模式。
 5. 只有明显越界、破坏性操作、凭据/登录、Computer Use、提交/推送/发布，或发现需要沉淀的新问题时，才通过 zhi 询问。`
 
 function createSettings() {
+  const windowsPlatform = navigator.platform.toUpperCase().includes('WIN')
   const alwaysOnTop = ref(true) // 与后端默认值保持一致
   const audioNotificationEnabled = ref(true)
   const audioUrl = ref('')
@@ -288,7 +289,8 @@ function createSettings() {
               console.log(`窗口尺寸已调整: ${width}x${height} -> ${adjustedWidth}x${adjustedHeight}`)
             }
 
-            if (adjustedWidth === lastSavedWindowSize.width
+            if (windowsPlatform
+              && adjustedWidth === lastSavedWindowSize.width
               && adjustedHeight === lastSavedWindowSize.height) {
               return
             }
@@ -429,6 +431,11 @@ function createSettings() {
       // 监听窗口获得焦点事件
       windowFocusUnlisten = await webview.onFocusChanged(({ payload: focused }) => {
         if (focused) {
+          if (!windowsPlatform) {
+            void reloadAllSettings()
+            return
+          }
+
           if (focusReloadTimer !== null)
             window.clearTimeout(focusReloadTimer)
 

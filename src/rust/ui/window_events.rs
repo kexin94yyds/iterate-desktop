@@ -2,13 +2,18 @@ use crate::app::setup::set_last_focused_window;
 use crate::config::AppState;
 use crate::log_important;
 use crate::ui::window_registry::WindowRegistry;
+#[cfg(target_os = "windows")]
 use std::sync::atomic::{AtomicU64, Ordering};
+#[cfg(target_os = "windows")]
 use std::time::Duration;
 use tauri::{AppHandle, Manager, WindowEvent};
 
+#[cfg(target_os = "windows")]
 static FOCUS_PERSIST_GENERATION: AtomicU64 = AtomicU64::new(0);
+#[cfg(target_os = "windows")]
 const WINDOW_REGISTRY_CLEANUP_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
+#[cfg(target_os = "windows")]
 fn schedule_focus_persist() {
     let generation = FOCUS_PERSIST_GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
     tauri::async_runtime::spawn(async move {
@@ -31,6 +36,7 @@ fn schedule_focus_persist() {
     });
 }
 
+#[cfg(target_os = "windows")]
 pub fn start_window_registry_cleanup_task() {
     tauri::async_runtime::spawn(async {
         loop {
@@ -57,7 +63,15 @@ pub fn setup_window_event_listeners(app_handle: &AppHandle) {
         window.on_window_event(move |event| {
             if let WindowEvent::Focused(true) = event {
                 set_last_focused_window(&label_clone);
+                #[cfg(target_os = "windows")]
                 schedule_focus_persist();
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let mut registry = WindowRegistry::load();
+                    if let Err(error) = registry.mark_current_window_focused() {
+                        log_important!(warn, "记录窗口聚焦时间失败: {}", error);
+                    }
+                }
             }
         });
     }
@@ -71,6 +85,7 @@ pub fn setup_window_event_listeners(app_handle: &AppHandle) {
                 api.prevent_close();
 
                 let app_handle = app_handle_clone.clone();
+                #[cfg(target_os = "windows")]
                 if let Some(window) = app_handle.get_webview_window("main") {
                     let _ = window.hide();
                 }

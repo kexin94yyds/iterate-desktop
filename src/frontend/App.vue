@@ -37,6 +37,7 @@ const mcpLaunchContext = ref<McpLaunchContext | null>(null)
 const trialCheckMessage = ref('正在检查授权状态...')
 const TRIAL_STATUS_TIMEOUT_MS = 5000
 const speechOverlayMode = new URLSearchParams(window.location.search).get('view') === 'speech-overlay'
+const windowsPlatform = navigator.platform.toUpperCase().includes('WIN')
 interface StartupStatus {
   phase: 'starting' | 'ready' | 'degraded'
   message: string
@@ -177,14 +178,16 @@ onMounted(async () => {
   if (speechOverlayMode)
     return
 
-  unlistenStartupStatus = await listen<StartupStatus>('startup-status-changed', (event) => {
-    startupStatus.value = event.payload
-  })
-  try {
-    startupStatus.value = await invoke<StartupStatus>('get_startup_status')
-  }
-  catch (error) {
-    console.warn('读取后台启动状态失败:', error)
+  if (windowsPlatform) {
+    unlistenStartupStatus = await listen<StartupStatus>('startup-status-changed', (event) => {
+      startupStatus.value = event.payload
+    })
+    try {
+      startupStatus.value = await invoke<StartupStatus>('get_startup_status')
+    }
+    catch (error) {
+      console.warn('读取后台启动状态失败:', error)
+    }
   }
 
   await reportTrialDebug('onMounted:start')
@@ -279,7 +282,7 @@ onUnmounted(() => {
 
   <div v-else class="min-h-screen bg-surface transition-colors duration-200">
     <div
-      v-if="startupStatus.phase !== 'ready'"
+      v-if="windowsPlatform && startupStatus.phase !== 'ready'"
       class="fixed left-1/2 top-3 z-[1000] flex max-w-[calc(100%-24px)] -translate-x-1/2 items-center gap-3 rounded-lg border px-3 py-2 text-sm shadow-lg"
       :class="startupStatus.phase === 'degraded'
         ? 'border-amber-400/40 bg-amber-950/95 text-amber-100'

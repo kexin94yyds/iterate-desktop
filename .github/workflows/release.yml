@@ -86,20 +86,10 @@ jobs:
         env:
           CARGO_PROFILE_RELEASE_LTO: thin
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
-          CARGO_PROFILE_RELEASE_OPT_LEVEL: 3
         run: cargo build --release --bin mcp-server
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Verify Windows experience changes
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        run: |
-          pnpm run lint:check
-          cargo check --lib --bins
-          cargo test --test windows_window_registry
-          pnpm run test:windows-experience
 
       - name: Build with Tauri (no bundle)
         shell: bash
@@ -115,8 +105,7 @@ jobs:
           elif [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
             export CARGO_PROFILE_RELEASE_LTO=thin
             export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
-            export CARGO_PROFILE_RELEASE_OPT_LEVEL=3
-            pnpm exec tauri build --bundles nsis
+            pnpm dlx @tauri-apps/cli@2.10.1 build --no-bundle
           else
             # Linux build - 移除静态链接标志以避免 proc-macro 编译问题
             pnpm dlx @tauri-apps/cli@2.10.1 build --no-bundle
@@ -160,13 +149,6 @@ jobs:
             cd cli-package
             pwsh -NoProfile -File ../scripts/windows-install-smoke.ps1 -PackageDir .
             7z a ../iterate-package-${TAG_NAME}-${{ matrix.name }}.zip .
-            cd ..
-            WINDOWS_INSTALLER="$(find target/release/bundle/nsis -maxdepth 1 -name '*-setup.exe' | head -n 1)"
-            if [[ -z "${WINDOWS_INSTALLER}" ]]; then
-              echo "Missing NSIS installer"
-              exit 1
-            fi
-            cp "${WINDOWS_INSTALLER}" "iterate-setup-${TAG_NAME}-${{ matrix.name }}.exe"
           else
             cp "$TARGET_DIR/iterate" cli-package/
             cp "$TARGET_DIR/mcp-server" cli-package/
@@ -183,7 +165,6 @@ jobs:
           path: |
             iterate-package-*.tar.gz
             iterate-package-*.zip
-            iterate-setup-*.exe
           if-no-files-found: ignore
 
   build-macos-gui:
@@ -409,7 +390,6 @@ jobs:
           MAC_DMG="$(find artifacts -type f \\( -name 'iterate_aarch64.dmg' -o -name "iterate_${TAG_VERSION}_aarch64.dmg" \\) | head -n 1)"
           MAC_ZIP="$(find artifacts -type f -name 'iterate-macos.zip' | head -n 1)"
           WIN_ZIP="$(find artifacts -type f -name 'iterate-package-*-windows-x86_64.zip' | head -n 1)"
-          WIN_SETUP="$(find artifacts -type f -name 'iterate-setup-*-windows-x86_64.exe' | head -n 1)"
           INSTALLATION_DOC="$(find artifacts -type f -name 'INSTALLATION.md' | head -n 1)"
           INSTALL_PROMPT_DOC="$(find artifacts -type f -name 'INSTALL_PROMPT.md' | head -n 1)"
 
@@ -421,15 +401,14 @@ jobs:
           cp "${MAC_DMG}" "stable-assets/iterate_${TAG_VERSION}_aarch64.dmg"
           cp "${MAC_DMG}" stable-assets/iterate_aarch64.dmg
 
-          if [[ -z "${WIN_ZIP}" || -z "${WIN_SETUP}" ]]; then
-            echo "Missing stable Windows ZIP or NSIS installer artifact"
+          if [[ -z "${WIN_ZIP}" ]]; then
+            echo "Missing stable Windows ZIP artifact"
             exit 1
           fi
 
           cp "${MAC_ZIP}" stable-assets/iterate-macos.zip
 
           cp "${WIN_ZIP}" stable-assets/iterate-windows-x64.zip
-          cp "${WIN_SETUP}" stable-assets/iterate-windows-x64-setup.exe
 
           if [[ -n "${INSTALLATION_DOC}" ]]; then
             cp "${INSTALLATION_DOC}" stable-assets/INSTALLATION.md
@@ -467,7 +446,7 @@ jobs:
           const { createHash } = require('node:crypto')
           const { readdirSync, readFileSync, writeFileSync } = require('node:fs')
           const assets = readdirSync('stable-assets')
-            .filter((name) => /\.(dmg|zip|exe)$/.test(name))
+            .filter((name) => /\.(dmg|zip)$/.test(name))
             .sort()
             .map((name) => ({
               name,
@@ -552,7 +531,6 @@ jobs:
           files: |
             artifacts/*/iterate-package-*.tar.gz
             artifacts/*/iterate-package-*.zip
-            artifacts/*/iterate-setup-*.exe
           draft: false
           prerelease: false
           generate_release_notes: false
@@ -607,7 +585,7 @@ jobs:
 
             const files = fs.readdirSync(publicAssetsDir);
             for (const file of files) {
-              if (!file.match(/\.(dmg|zip|exe|md|sha256|sig|json)$/)) continue;
+              if (!file.match(/\.(dmg|zip|md|sha256|sig|json)$/)) continue;
               const filePath = path.join(publicAssetsDir, file);
               const data = fs.readFileSync(filePath);
               try {

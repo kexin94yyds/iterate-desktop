@@ -1,6 +1,12 @@
-use crate::app::{commands::*, setup::start_application_setup};
+use crate::app::commands::*;
+#[cfg(not(target_os = "windows"))]
+use crate::app::setup::setup_application;
+#[cfg(target_os = "windows")]
+use crate::app::setup::start_application_setup;
 use crate::config::AppState;
 use crate::conversation::ConversationManager;
+#[cfg(not(target_os = "windows"))]
+use crate::log_important;
 use crate::ui::AudioController;
 use std::collections::BTreeSet;
 use std::fs;
@@ -841,10 +847,13 @@ pub fn build_tauri_app() -> Builder<tauri::Wry> {
             crate::native_speech::set_app_handle(app_handle.clone());
             crate::ui::live_goal::start_live_goal_tray_timer(app_handle.clone());
             crate::ui::codex_goal_observer::start_codex_goal_observer(app_handle.clone());
-            crate::ui::setup_window_event_listeners(&app_handle);
-            crate::ui::window_events::start_window_registry_cleanup_task();
-            if let Err(error) = crate::ui::exit_handler::setup_exit_handlers(&app_handle) {
-                log::warn!("设置退出处理器失败: {error}");
+            #[cfg(target_os = "windows")]
+            {
+                crate::ui::setup_window_event_listeners(&app_handle);
+                crate::ui::window_events::start_window_registry_cleanup_task();
+                if let Err(error) = crate::ui::exit_handler::setup_exit_handlers(&app_handle) {
+                    log::warn!("设置退出处理器失败: {error}");
+                }
             }
 
             #[cfg(target_os = "macos")]
@@ -864,6 +873,13 @@ pub fn build_tauri_app() -> Builder<tauri::Wry> {
                 }
             }
 
+            #[cfg(not(target_os = "windows"))]
+            tauri::async_runtime::block_on(async {
+                if let Err(error) = setup_application(&app_handle).await {
+                    log_important!(error, "应用初始化失败: {}", error);
+                }
+            });
+
             let args: Vec<String> = std::env::args().collect();
 
             if should_show_main_window_on_launch(&args) {
@@ -873,9 +889,12 @@ pub fn build_tauri_app() -> Builder<tauri::Wry> {
                 }
             }
 
-            // 主窗口先显示，配置、Bridge、IPC 和浏览器监控在后台初始化，
-            // 避免双击后长时间没有任何反馈。
-            start_application_setup(app_handle);
+            #[cfg(target_os = "windows")]
+            {
+                // Windows 主窗口先显示，配置、Bridge、IPC 和浏览器监控在后台初始化，
+                // 避免双击后长时间没有任何反馈。
+                start_application_setup(app_handle);
+            }
 
             Ok(())
         })

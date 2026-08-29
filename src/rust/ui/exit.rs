@@ -1,6 +1,7 @@
 use crate::config::AppState;
 use crate::constants::app::{EXIT_CONFIRMATION_WINDOW_SECS, REQUIRED_EXIT_ATTEMPTS};
 use crate::log_important;
+#[cfg(target_os = "windows")]
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -154,6 +155,7 @@ pub async fn handle_system_exit_request(
 ) -> Result<bool, String> {
     // 如果是手动点击关闭按钮，直接退出
     if is_manual_close {
+        #[cfg(target_os = "windows")]
         if state.exit_in_progress.swap(true, Ordering::SeqCst) {
             return Ok(true);
         }
@@ -166,6 +168,7 @@ pub async fn handle_system_exit_request(
     let (should_exit, show_warning) = should_allow_exit(&state)?;
 
     if should_exit {
+        #[cfg(target_os = "windows")]
         if state.exit_in_progress.swap(true, Ordering::SeqCst) {
             return Ok(true);
         }
@@ -199,10 +202,13 @@ pub async fn handle_system_exit_request(
 
 /// 执行实际的退出操作
 async fn perform_exit(app: AppHandle) -> Result<(), String> {
-    // 立即隐藏窗口，让用户得到明确反馈；不要再次调用 close()，否则会递归触发
-    // CloseRequested 事件。
+    #[cfg(target_os = "windows")]
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.hide();
+    }
+    #[cfg(not(target_os = "windows"))]
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.close();
     }
 
     // 给已取消请求和日志一个很短的收尾窗口，随后终止整个应用运行时。
@@ -214,11 +220,14 @@ async fn perform_exit(app: AppHandle) -> Result<(), String> {
 /// Tauri命令：强制退出应用（用于程序内部调用）
 #[tauri::command]
 pub async fn force_exit_app(app: AppHandle) -> Result<(), String> {
-    let state = app.state::<AppState>();
-    if state.exit_in_progress.swap(true, Ordering::SeqCst) {
-        return Ok(());
+    #[cfg(target_os = "windows")]
+    {
+        let state = app.state::<AppState>();
+        if state.exit_in_progress.swap(true, Ordering::SeqCst) {
+            return Ok(());
+        }
+        cancel_pending_mcp_requests(state.inner())?;
     }
-    cancel_pending_mcp_requests(state.inner())?;
     perform_exit(app).await
 }
 
