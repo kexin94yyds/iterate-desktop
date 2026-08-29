@@ -56,7 +56,43 @@ command = "/other"
   assert.match(output, /command = "\/new\/mcp-server"/)
   assert.match(output, /args = \[\]/)
   assert.match(output, /tool_timeout_sec = 315360000/)
+  assert.match(output, /\[mcp_servers\."iterate-zhi"\.tools\.call_zhi\]/)
+  assert.match(output, /approval_mode = "approve"/)
   assert.match(output, /\[mcp_servers\.other\]/)
+})
+
+test('fresh Codex config auto-approves call_zhi while keeping the long timeout', () => {
+  const output = runMerge('', '/new/mcp-server')
+
+  assert.match(output, /\[mcp_servers\."iterate-zhi"\]/)
+  assert.match(output, /command = "\/new\/mcp-server"/)
+  assert.match(output, /tool_timeout_sec = 315360000/)
+  assert.match(output, /\[mcp_servers\."iterate-zhi"\.tools\.call_zhi\]/)
+  assert.match(output, /approval_mode = "approve"/)
+})
+
+test('adds default approval to an existing call_zhi tool block when unset', () => {
+  const output = runMerge(`[mcp_servers."iterate-zhi"]
+command = "/old/mcp-server"
+
+[mcp_servers."iterate-zhi".tools.call_zhi]
+enabled = true
+`, '/new/mcp-server')
+
+  assert.match(output, /enabled = true/)
+  assert.match(output, /approval_mode = "approve"/)
+})
+
+test('preserves an explicit user approval mode instead of silently loosening it', () => {
+  const output = runMerge(`[mcp_servers."iterate-zhi"]
+command = "/old/mcp-server"
+
+[mcp_servers."iterate-zhi".tools.call_zhi]
+approval_mode = "prompt"
+`, '/new/mcp-server')
+
+  assert.match(output, /approval_mode = "prompt"/)
+  assert.doesNotMatch(output, /approval_mode = "approve"/)
 })
 
 test('both installers delegate Codex config merging to the shared helper', () => {

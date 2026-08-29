@@ -42,6 +42,12 @@ if (-not (Test-Path -LiteralPath $InstalledExe -PathType Leaf)) {
 }
 Write-Host "[pass] Installed executable exists: $InstalledExe"
 
+$ActivationProbe = & $InstalledExe --activation-gate-status
+if ($LASTEXITCODE -ne 0 -or $ActivationProbe -ne "activation_gate_required=false") {
+  throw "Installed community executable unexpectedly requires activation: $ActivationProbe"
+}
+Write-Host "[pass] Installed community executable reports activation_gate_required=false"
+
 $Desktop = [Environment]::GetFolderPath("Desktop")
 $DesktopShortcut = Join-Path $Desktop "iterate.lnk"
 $StartMenu = [Environment]::GetFolderPath("StartMenu")
