@@ -33,24 +33,33 @@ function pngDimensions(bytes) {
   }
 }
 
-test('public README uses coiterate ownership and current community contacts', async () => {
+test('public README uses coiterate ownership and current product and community images', async () => {
   const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8')
   const windowsSetup = await readFile(new URL('../WINDOWS_SETUP_FOR_AI.md', import.meta.url), 'utf8')
+  const hero = await readFile(new URL('../assets/iterate-desktop-hero-zh.png', import.meta.url))
+  const desktop = await readFile(new URL('../assets/iterate-desktop-interceptor-zh.png', import.meta.url))
+  const mobile = await readFile(new URL('../assets/iterate-mobile-interceptor-zh.png', import.meta.url))
   const wechat = await readFile(new URL('../assets/community-wechat-group.png', import.meta.url))
   const qq = await readFile(new URL('../assets/community-qq-group.png', import.meta.url))
 
   assert.match(readme, /github\.com\/co-iterate\/iterate-desktop/)
   assert.match(readme, /由 <a href="https:\/\/github\.com\/co-iterate">coiterate<\/a> 共同维护/)
-  assert.doesNotMatch(readme, /assets\/iterate-(?:desktop-hero|desktop-interceptor|mobile-interceptor)-zh\.png/)
+  assert.match(readme, /assets\/iterate-desktop-hero-zh\.png/)
+  assert.match(readme, /assets\/iterate-desktop-interceptor-zh\.png/)
+  assert.match(readme, /assets\/iterate-mobile-interceptor-zh\.png/)
   assert.match(readme, /assets\/community-wechat-group\.png/)
   assert.match(readme, /assets\/community-qq-group\.png/)
   assert.match(readme, /有效期至 2026-09-04/)
   assert.match(readme, /群号：186107551/)
   assert.match(readme, /CONTRIBUTING\.md/)
   assert.doesNotMatch(readme, /star-history\.com/)
+  assert.doesNotMatch(readme, /community-qr-publisher|管理员合并|内部维护流程/)
   assert.doesNotMatch(readme, /github\.com\/kexin94yyds\/iterate-desktop/)
   assert.match(windowsSetup, /github\.com\/co-iterate\/iterate-desktop\.git/)
   assert.doesNotMatch(windowsSetup, /github\.com\/kexin94yyds\/iterate-desktop/)
+  assert.deepEqual(pngDimensions(hero), { width: 2326, height: 914 })
+  assert.deepEqual(pngDimensions(desktop), { width: 1200, height: 1606 })
+  assert.deepEqual(pngDimensions(mobile), { width: 1284, height: 2778 })
   assert.deepEqual(pngDimensions(wechat), { width: 850, height: 850 })
   assert.deepEqual(pngDimensions(qq), { width: 981, height: 981 })
 })
