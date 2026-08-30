@@ -201,7 +201,8 @@ onMounted(async () => {
       return
     }
 
-    await speechRuntimeHost.initialize()
+    if (!windowsPlatform)
+      await speechRuntimeHost.initialize()
 
     if (mcpLaunchContext.value.kind === 'invalid')
       await reportTrialDebug(`onMounted:mcpLaunchInvalid ${mcpLaunchContext.value.error ?? 'unknown'}`)
