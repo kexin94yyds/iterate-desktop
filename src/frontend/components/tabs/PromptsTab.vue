@@ -124,16 +124,36 @@ onMounted(async () => {
                 使用说明书
               </div>
               <div class="text-sm opacity-60 font-normal">
-                根据当前目标选择一份提示词发给 AI
+                先按系统安装，再接入 MCP，并复制通用系统提示词
               </div>
             </div>
           </n-space>
         </template>
 
         <n-space vertical size="small">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+            <div class="rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-blue-50/70 dark:bg-blue-950/30 p-3">
+              <div class="font-medium text-sm mb-1">
+                macOS 安装
+              </div>
+              <div class="text-xs leading-5 opacity-75">
+                将 iterate.app 放入“应用程序”，MCP command 使用
+                /Applications/iterate.app/Contents/MacOS/mcp-server。
+              </div>
+            </div>
+            <div class="rounded-lg border border-cyan-200/70 dark:border-cyan-800/70 bg-cyan-50/70 dark:bg-cyan-950/30 p-3">
+              <div class="font-medium text-sm mb-1">
+                Windows 安装
+              </div>
+              <div class="text-xs leading-5 opacity-75">
+                解压后运行 Install iterate.bat，MCP command 位于
+                %LOCALAPPDATA%\iterate\bin\mcp-server.exe。
+              </div>
+            </div>
+          </div>
           <div class="flex items-center text-sm leading-relaxed">
             <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-3 flex-shrink-0" />
-            <span class="opacity-90">首次安装或接入新的 AI 客户端，使用“iterate 安装”</span>
+            <span class="opacity-90">首次安装或接入新的 AI 客户端，复制“iterate 安装”发给 AI</span>
           </div>
           <div class="flex items-center text-sm leading-relaxed">
             <div class="w-1.5 h-1.5 bg-purple-500 rounded-full mr-3 flex-shrink-0" />
@@ -141,11 +161,11 @@ onMounted(async () => {
           </div>
           <div class="flex items-center text-sm leading-relaxed">
             <div class="w-1.5 h-1.5 bg-orange-500 rounded-full mr-3 flex-shrink-0" />
-            <span class="opacity-90">日常使用 iterate，把“核心系统提示词”加入 AI 的系统提示中</span>
+            <span class="opacity-90">日常使用 iterate，把“通用系统提示词”加入 AI 的系统提示中</span>
           </div>
           <div class="flex items-center text-sm leading-relaxed">
             <div class="w-1.5 h-1.5 bg-green-500 rounded-full mr-3 flex-shrink-0" />
-            <span class="opacity-90">核心系统提示词会跟随“MCP 工具”页面的开关自动更新</span>
+            <span class="opacity-90">通用模板不依赖个人知识库，并会跟随“MCP 工具”页面的开关更新</span>
           </div>
         </n-space>
       </n-card>
@@ -254,7 +274,7 @@ onMounted(async () => {
         </n-card>
       </n-card>
 
-      <!-- 核心系统提示词卡片 -->
+      <!-- 通用系统提示词卡片 -->
       <n-card size="small">
         <!-- 卡片头部 -->
         <template #header>
@@ -271,10 +291,10 @@ onMounted(async () => {
               <!-- 标题信息 -->
               <div>
                 <div class="text-lg font-medium mb-1 tracking-tight">
-                  核心系统提示词
+                  通用系统提示词
                 </div>
                 <div class="text-sm opacity-60 font-normal">
-                  基于 MCP 工具配置动态生成
+                  适用于 macOS / Windows，不依赖个人知识库
                 </div>
               </div>
             </n-space>

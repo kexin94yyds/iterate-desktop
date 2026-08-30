@@ -16,6 +16,36 @@ if ($Bytes.Length -lt 64 -or $Bytes[0] -ne 0x4D -or $Bytes[1] -ne 0x5A) {
 }
 Write-Host "[pass] NSIS installer exists and has a PE header: $Installer"
 
+function Invoke-CapturedProcess($Path, [string[]]$Arguments) {
+  $StartInfo = [System.Diagnostics.ProcessStartInfo]::new()
+  $StartInfo.FileName = (Resolve-Path -LiteralPath $Path).Path
+  $StartInfo.UseShellExecute = $false
+  $StartInfo.CreateNoWindow = $true
+  $StartInfo.RedirectStandardOutput = $true
+  $StartInfo.RedirectStandardError = $true
+  foreach ($Argument in $Arguments) {
+    [void]$StartInfo.ArgumentList.Add($Argument)
+  }
+
+  $Process = [System.Diagnostics.Process]::new()
+  $Process.StartInfo = $StartInfo
+  try {
+    if (-not $Process.Start()) {
+      throw "Failed to start $Path"
+    }
+    $StdoutTask = $Process.StandardOutput.ReadToEndAsync()
+    $StderrTask = $Process.StandardError.ReadToEndAsync()
+    $Process.WaitForExit()
+    return [pscustomobject]@{
+      ExitCode = $Process.ExitCode
+      Stdout = $StdoutTask.GetAwaiter().GetResult().Trim()
+      Stderr = $StderrTask.GetAwaiter().GetResult().Trim()
+    }
+  } finally {
+    $Process.Dispose()
+  }
+}
+
 if (-not $Install) {
   Write-Host "[warn] Install/start/uninstall smoke skipped; pass -Install to run it"
   exit 0
@@ -42,9 +72,9 @@ if (-not (Test-Path -LiteralPath $InstalledExe -PathType Leaf)) {
 }
 Write-Host "[pass] Installed executable exists: $InstalledExe"
 
-$ActivationProbe = & $InstalledExe --activation-gate-status
-if ($LASTEXITCODE -ne 0 -or $ActivationProbe -ne "activation_gate_required=false") {
-  throw "Installed community executable unexpectedly requires activation: $ActivationProbe"
+$ActivationProbe = Invoke-CapturedProcess $InstalledExe @("--activation-gate-status")
+if ($ActivationProbe.ExitCode -ne 0 -or $ActivationProbe.Stdout -ne "activation_gate_required=false") {
+  throw "Installed community executable unexpectedly requires activation: exit=$($ActivationProbe.ExitCode) stdout=$($ActivationProbe.Stdout) stderr=$($ActivationProbe.Stderr)"
 }
 Write-Host "[pass] Installed community executable reports activation_gate_required=false"
 

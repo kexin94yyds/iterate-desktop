@@ -76,7 +76,7 @@ tool_timeout_sec = 315360000
 ## 如果安装卡住
 
 优先回到主安装指南：
-- [docs/iterate_安装指南.md](docs/iterate_安装指南.md)
+- [docs/INSTALLATION.md](docs/INSTALLATION.md)
 
 如果你需要低层排查，再看：
 - [MCP_SERVER.md](MCP_SERVER.md)

@@ -2,7 +2,7 @@
 
 > 历史说明：本文件偏向源码构建与早期 Windows 接入记录，不是当前普通用户的主安装入口。
 >
-> 当前对外交付请优先使用 [docs/iterate_安装指南.md](docs/iterate_安装指南.md) 和安装包中的 `INSTALLATION.md`。
+> 当前对外交付请优先使用 [docs/INSTALLATION.md](docs/INSTALLATION.md) 和安装包中的 `INSTALLATION.md`。
 
 在 Windows 上编译 iterate 应用。
 

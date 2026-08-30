@@ -1,7 +1,7 @@
 {
   "name": "cunzhi",
   "type": "module",
-  "version": "0.6.2",
+  "version": "0.6.4",
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "dev": "vite",
@@ -14,6 +14,7 @@
     "oss:export": "node scripts/export-desktop-oss.mjs export",
     "repo:hygiene": "node scripts/check-repo-hygiene.mjs",
     "test:desktop-oss-readiness": "node --test scripts/desktop-oss-readiness.test.mjs",
+    "test:install-docs": "node --test scripts/install-docs-contract.test.mjs",
     "test:desktop-audio-privacy": "node --test scripts/desktop-audio-privacy.test.mjs",
     "test:desktop-web-push-security": "node --test scripts/desktop-bridge-web-push-security.test.mjs",
     "test:desktop-build-targets": "node --test scripts/desktop-build-rs-target-gating.test.mjs",
@@ -63,7 +64,7 @@
     "test:mcp-tool-icons": "node --test scripts/mcp-tool-icon-safelist.test.mjs",
     "test:component-mcp-tools": "node --test scripts/frontend-component-mcp-tools.test.mjs",
     "test:security-regression": "bash ./scripts/iterate-security-regression-check.sh",
-    "test:scripts": "pnpm run test:desktop-oss-readiness && pnpm run test:desktop-audio-privacy && pnpm run test:desktop-web-push-security && pnpm run test:desktop-build-targets && pnpm run test:desktop-community-activation && pnpm run test:windows-experience && pnpm run test:bridge-daemon && pnpm run test:mermaid-security && pnpm run test:popup-discontiguous-selection && pnpm run test:release-signing && pnpm run test:health-loop && pnpm run test:health-daemon && pnpm run test:loop-contract-check && pnpm run test:mcp-tool-icons && pnpm run test:component-mcp-tools",
+    "test:scripts": "pnpm run test:desktop-oss-readiness && pnpm run test:install-docs && pnpm run test:desktop-audio-privacy && pnpm run test:desktop-web-push-security && pnpm run test:desktop-build-targets && pnpm run test:desktop-community-activation && pnpm run test:windows-experience && pnpm run test:bridge-daemon && pnpm run test:mermaid-security && pnpm run test:popup-discontiguous-selection && pnpm run test:release-signing && pnpm run test:health-loop && pnpm run test:health-daemon && pnpm run test:loop-contract-check && pnpm run test:mcp-tool-icons && pnpm run test:component-mcp-tools",
     "test:rust": "cargo test",
     "test:ui": "cd src/frontend/test && vite",
     "test:ui:build": "cd src/frontend/test && vite build"

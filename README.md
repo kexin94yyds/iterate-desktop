@@ -21,6 +21,7 @@
 </sub></p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/version-0.6.4-blue?style=flat" alt="Source version 0.6.4">
   <a href="https://github.com/kexin94yyds/iterate-releases/releases/latest"><img src="https://img.shields.io/github/v/release/kexin94yyds/iterate-releases?style=flat&amp;label=release&amp;color=111111" alt="Latest release"></a>
   <a href="https://github.com/kexin94yyds/iterate-releases/releases"><img src="https://img.shields.io/github/downloads/kexin94yyds/iterate-releases/total?style=flat&amp;label=downloads&amp;color=111111" alt="Total downloads"></a>
   <a href="https://github.com/co-iterate/iterate-desktop"><img src="https://img.shields.io/github/stars/co-iterate/iterate-desktop?style=flat&amp;label=stars&amp;color=08A67A" alt="GitHub stars"></a>
@@ -42,11 +43,18 @@ iterate 连接正在运行的 AI 编程工具，在它准备过早结束、等�
 
 | 平台 | 获取方式 | 说明 |
 | --- | --- | --- |
-| macOS | [下载最新版本](https://github.com/kexin94yyds/iterate-releases/releases/latest) | 安装后按引导接入支持 MCP 的客户端 |
-| Windows | [下载最新版本](https://github.com/kexin94yyds/iterate-releases/releases/latest) | 解压后阅读包内 `INSTALLATION.md` |
+| macOS | [下载最新版本](https://github.com/kexin94yyds/iterate-releases/releases/latest) | 打开 DMG，将 `iterate.app` 放入“应用程序” |
+| Windows | [下载最新版本](https://github.com/kexin94yyds/iterate-releases/releases/latest) | 解压 `iterate-windows-x64.zip`，运行 `Install iterate.bat` |
 | 从源码构建 | [构建文档](BUILDING.md) | Node.js、pnpm、Rust 与 Tauri 2 |
 
-完整安装流程见 [安装指南](docs/INSTALLATION.md)，常见故障见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)。
+安装后还要把 MCP command 配进当前 AI 客户端：
+
+- macOS：`/Applications/iterate.app/Contents/MacOS/mcp-server`
+- Windows：`%LOCALAPPDATA%\iterate\bin\mcp-server.exe`（写入配置时使用当前用户的绝对路径）
+
+完全重启 Windsurf、Cursor、Codex 或其他客户端后，由客户端自动启动 MCP server；普通用户不需要在终端长期手动运行它。随后打开 App 内“使用说明书”，复制不依赖个人知识库的“通用系统提示词”，并发起一次带非空 `message` 的 `zhi` / `call_zhi` 完成验证。
+
+完整的 macOS / Windows 安装、MCP 接入和验证流程见 [安装与使用说明](docs/INSTALLATION.md)，常见故障见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)。
 
 ## 为什么需要 iterate
 

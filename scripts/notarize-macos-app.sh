@@ -9,6 +9,7 @@ ZIP_PATH="${REPO_ROOT}/target/release/delivery/macos/iterate.app.zip"
 DELIVERY_DIR="${REPO_ROOT}/target/release/delivery/macos"
 INSTALLATION_PATH="${DELIVERY_DIR}/INSTALLATION.md"
 PROMPT_PATH="${DELIVERY_DIR}/INSTALL_PROMPT.md"
+SYSTEM_PROMPT_PATH="${DELIVERY_DIR}/SYSTEM_PROMPT.md"
 PROFILE_NAME="${CUNZHI_NOTARY_PROFILE:-cunzhi-notary}"
 TEAM_ID="${APPLE_TEAM_ID:-${CUNZHI_NOTARY_TEAM_ID:-UM3Z9G5DNH}}"
 SIGN_IDENTITY="${CUNZHI_MACOS_SIGN_IDENTITY:-}"
@@ -164,6 +165,10 @@ rebuild_delivery_dmg() {
 
   if [[ -f "${PROMPT_PATH}" ]]; then
     cp "${PROMPT_PATH}" "${stage_dir}/INSTALL_PROMPT.md"
+  fi
+
+  if [[ -f "${SYSTEM_PROMPT_PATH}" ]]; then
+    cp "${SYSTEM_PROMPT_PATH}" "${stage_dir}/SYSTEM_PROMPT.md"
   fi
 
   rm -f "${output_dmg_path}"
