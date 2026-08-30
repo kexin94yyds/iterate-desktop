@@ -60,11 +60,16 @@ test('Windows bundle uses a current-user NSIS installer', () => {
 })
 
 test('Windows package smoke waits for the GUI-subsystem activation probe and captures its output', () => {
-  const smoke = source('scripts/windows-install-smoke.ps1')
-  assert.match(smoke, /System\.Diagnostics\.ProcessStartInfo/)
-  assert.match(smoke, /UseShellExecute\s*=\s*\$false/)
-  assert.match(smoke, /RedirectStandardOutput\s*=\s*\$true/)
-  assert.match(smoke, /RedirectStandardError\s*=\s*\$true/)
-  assert.match(smoke, /WaitForExit\(\)/)
-  assert.doesNotMatch(smoke, /\$ActivationProbe\s*=\s*&/)
+  for (const path of [
+    'scripts/windows-install-smoke.ps1',
+    'scripts/windows-installer-smoke.ps1',
+  ]) {
+    const smoke = source(path)
+    assert.match(smoke, /System\.Diagnostics\.ProcessStartInfo/, path)
+    assert.match(smoke, /UseShellExecute\s*=\s*\$false/, path)
+    assert.match(smoke, /RedirectStandardOutput\s*=\s*\$true/, path)
+    assert.match(smoke, /RedirectStandardError\s*=\s*\$true/, path)
+    assert.match(smoke, /WaitForExit\(\)/, path)
+    assert.doesNotMatch(smoke, /\$ActivationProbe\s*=\s*&/, path)
+  }
 })
