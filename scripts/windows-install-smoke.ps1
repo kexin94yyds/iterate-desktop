@@ -64,6 +64,36 @@ function Require-X64Pe($Path, $Label) {
   }
 }
 
+function Invoke-CapturedProcess($Path, [string[]]$Arguments) {
+  $StartInfo = [System.Diagnostics.ProcessStartInfo]::new()
+  $StartInfo.FileName = (Resolve-Path -LiteralPath $Path).Path
+  $StartInfo.UseShellExecute = $false
+  $StartInfo.CreateNoWindow = $true
+  $StartInfo.RedirectStandardOutput = $true
+  $StartInfo.RedirectStandardError = $true
+  foreach ($Argument in $Arguments) {
+    [void]$StartInfo.ArgumentList.Add($Argument)
+  }
+
+  $Process = [System.Diagnostics.Process]::new()
+  $Process.StartInfo = $StartInfo
+  try {
+    if (-not $Process.Start()) {
+      throw "Failed to start $Path"
+    }
+    $StdoutTask = $Process.StandardOutput.ReadToEndAsync()
+    $StderrTask = $Process.StandardError.ReadToEndAsync()
+    $Process.WaitForExit()
+    return [pscustomobject]@{
+      ExitCode = $Process.ExitCode
+      Stdout = $StdoutTask.GetAwaiter().GetResult().Trim()
+      Stderr = $StderrTask.GetAwaiter().GetResult().Trim()
+    }
+  } finally {
+    $Process.Dispose()
+  }
+}
+
 $script:PassCount = 0
 $script:WarnCount = 0
 $script:FailCount = 0
@@ -96,11 +126,15 @@ Require-File (Join-Path $PackageDir "INSTALLATION.md") "installation guide"
 Require-File (Join-Path $PackageDir "INSTALL_PROMPT.md") "installation assistant prompt"
 Require-File (Join-Path $PackageDir "SYSTEM_PROMPT.md") "generic system prompt"
 
-$ActivationProbe = & (Join-Path $AppDir "iterate.exe") --activation-gate-status
-if ($LASTEXITCODE -eq 0 -and $ActivationProbe -eq "activation_gate_required=false") {
-  Pass "community activation gate is disabled"
-} else {
-  Fail "community activation gate probe failed: $ActivationProbe"
+try {
+  $ActivationProbe = Invoke-CapturedProcess (Join-Path $AppDir "iterate.exe") @("--activation-gate-status")
+  if ($ActivationProbe.ExitCode -eq 0 -and $ActivationProbe.Stdout -eq "activation_gate_required=false") {
+    Pass "community activation gate is disabled"
+  } else {
+    Fail "community activation gate probe failed: exit=$($ActivationProbe.ExitCode) stdout=$($ActivationProbe.Stdout) stderr=$($ActivationProbe.Stderr)"
+  }
+} catch {
+  Fail "community activation gate probe failed: $($_.Exception.Message)"
 }
 
 Require-X64Pe (Join-Path $AppDir "iterate.exe") "iterate executable"

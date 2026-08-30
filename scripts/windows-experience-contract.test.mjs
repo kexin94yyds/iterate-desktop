@@ -58,3 +58,13 @@ test('Windows bundle uses a current-user NSIS installer', () => {
   const config = JSON.parse(source('tauri.conf.json'))
   assert.equal(config.bundle.windows.nsis.installMode, 'currentUser')
 })
+
+test('Windows package smoke waits for the GUI-subsystem activation probe and captures its output', () => {
+  const smoke = source('scripts/windows-install-smoke.ps1')
+  assert.match(smoke, /System\.Diagnostics\.ProcessStartInfo/)
+  assert.match(smoke, /UseShellExecute\s*=\s*\$false/)
+  assert.match(smoke, /RedirectStandardOutput\s*=\s*\$true/)
+  assert.match(smoke, /RedirectStandardError\s*=\s*\$true/)
+  assert.match(smoke, /WaitForExit\(\)/)
+  assert.doesNotMatch(smoke, /\$ActivationProbe\s*=\s*&/)
+})
