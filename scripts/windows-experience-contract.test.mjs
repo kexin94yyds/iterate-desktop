@@ -83,3 +83,12 @@ test('Windows package smoke waits for the GUI-subsystem activation probe and cap
     assert.doesNotMatch(smoke, /\$ActivationProbe\s*=\s*&/, path)
   }
 })
+
+test('Windows popup movement skips the blur-focus IME position hack', () => {
+  const popupInput = source('src/frontend/components/popup/PopupInput.vue')
+  assert.match(popupInput, /const windowsPlatform = typeof navigator !== 'undefined' && navigator\.platform\.toUpperCase\(\)\.includes\('WIN'\)/)
+  assert.match(
+    popupInput,
+    /webview\.onMoved\(\(\) => \{[\s\S]*?if \(windowsPlatform\)[\s\S]*?return[\s\S]*?fixIMEPosition\(\)/,
+  )
+})
