@@ -27,6 +27,39 @@ test('Windows shows the main window before background setup while non-Windows ke
   assert.match(builder, /#\[cfg\(not\(target_os = "windows"\)\)\][\s\S]*?async_runtime::block_on/)
 })
 
+test('Windows speech startup failure degrades without blocking the main application', () => {
+  const app = source('src/frontend/App.vue')
+  const windowsFallback = /if \(windowsPlatform\) \{\s*try \{\s*await speechRuntimeHost\.initialize\(\)\s*\}\s*catch \(error\) \{([\s\S]*?)\}\s*\}\s*else \{\s*await speechRuntimeHost\.initialize\(\)\s*\}/
+  const fallbackMatch = windowsFallback.exec(app)
+
+  assert.ok(fallbackMatch, 'speech initialization should degrade only on Windows')
+  assert.match(fallbackMatch[1], /console\.warn\('语音运行时初始化失败，主界面将继续启动:', error\)/)
+  assert.match(fallbackMatch[1], /onMounted:speechRuntimeDegraded/)
+  assert.doesNotMatch(fallbackMatch[1], /\breturn\b/)
+
+  const mcpShellIndex = app.indexOf('if (mcpLaunchContext.value.isMcp)')
+  const mcpInitializeIndex = app.indexOf('await initializeApplication({ mcpShell: true })', mcpShellIndex)
+  const mcpReturnIndex = app.indexOf('return', mcpInitializeIndex)
+  const speechFallbackIndex = fallbackMatch.index
+  const speechFallbackEnd = speechFallbackIndex + fallbackMatch[0].length
+  const activationGateIndex = app.indexOf('const activationGateRequired = await requiresActivationGate()', speechFallbackIndex)
+  const initializeApplicationIndex = app.indexOf('await initializeApplication()', activationGateIndex)
+  const speechInitializeIndexes = [...app.matchAll(/await speechRuntimeHost\.initialize\(\)/g)].map(match => match.index)
+  const activationGateCalls = [...app.matchAll(/await requiresActivationGate\(\)/g)]
+
+  assert.ok(mcpShellIndex >= 0 && mcpInitializeIndex > mcpShellIndex, 'MCP shell should initialize the popup application')
+  assert.ok(mcpReturnIndex > mcpInitializeIndex && mcpReturnIndex < speechFallbackIndex, 'MCP shell should return before speech startup')
+  assert.doesNotMatch(app.slice(mcpShellIndex, mcpReturnIndex), /speechRuntimeHost\.initialize|requiresActivationGate/)
+  assert.equal(speechInitializeIndexes.length, 2, 'startup should contain only the Windows and non-Windows speech calls')
+  assert.ok(
+    speechInitializeIndexes.every(index => index >= speechFallbackIndex && index < speechFallbackEnd),
+    'all speech initialization calls should stay inside the platform fallback block',
+  )
+  assert.equal(activationGateCalls.length, 1, 'startup should perform exactly one activation gate call')
+  assert.ok(activationGateIndex > speechFallbackIndex, 'activation checks should continue after degraded speech startup')
+  assert.ok(initializeApplicationIndex > activationGateIndex, 'main application initialization should remain reachable')
+})
+
 test('window registry cleanup runs off the UI thread at low frequency', () => {
   const events = source('src/rust/ui/window_events.rs')
   const builder = source('src/rust/app/builder.rs')
