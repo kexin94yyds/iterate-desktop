@@ -826,7 +826,7 @@ function applyCommandSuggestion(index = activeSuggestionIndex.value) {
 }
 
 function handleInputKeydown(event: KeyboardEvent) {
-  if (isComposing.value)
+  if (isComposing.value || event.isComposing || event.keyCode === 229 || event.repeat)
     return
 
   if (!hasCommandSuggestions.value)

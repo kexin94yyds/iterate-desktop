@@ -901,6 +901,7 @@ pub fn default_shortcut_config() -> ShortcutConfig {
 
 pub fn default_shortcuts() -> HashMap<String, ShortcutBinding> {
     let mut shortcuts = HashMap::new();
+    let is_macos = cfg!(target_os = "macos");
 
     // 快速发送快捷键
     shortcuts.insert(
@@ -914,8 +915,8 @@ pub fn default_shortcuts() -> HashMap<String, ShortcutBinding> {
                 key: "Enter".to_string(),
                 ctrl: false,
                 alt: false,
-                shift: false,
-                meta: true,
+                shift: !is_macos,
+                meta: is_macos,
             },
             enabled: true,
             scope: "popup".to_string(),
@@ -932,9 +933,9 @@ pub fn default_shortcuts() -> HashMap<String, ShortcutBinding> {
             action: "enhance".to_string(),
             key_combination: ShortcutKey {
                 key: "Enter".to_string(),
-                ctrl: false,
-                alt: true,
-                shift: false,
+                ctrl: !is_macos,
+                alt: is_macos,
+                shift: !is_macos,
                 meta: false,
             },
             enabled: true,
@@ -952,9 +953,9 @@ pub fn default_shortcuts() -> HashMap<String, ShortcutBinding> {
             action: "continue".to_string(),
             key_combination: ShortcutKey {
                 key: "Enter".to_string(),
-                ctrl: false,
+                ctrl: !is_macos,
                 alt: false,
-                shift: true,
+                shift: is_macos,
                 meta: false,
             },
             enabled: true,
@@ -1006,5 +1007,29 @@ mod tests {
 
         assert!(account.enabled);
         assert_eq!(account.id, "plus");
+    }
+
+    #[test]
+    fn popup_shortcut_defaults_match_current_platform() {
+        let shortcuts = default_shortcuts();
+        let quick_submit = &shortcuts["quick_submit"].key_combination;
+        let continue_key = &shortcuts["continue"].key_combination;
+        let enhance = &shortcuts["enhance"].key_combination;
+
+        if cfg!(target_os = "macos") {
+            assert!(quick_submit.meta);
+            assert!(!quick_submit.ctrl && !quick_submit.alt && !quick_submit.shift);
+            assert!(continue_key.shift);
+            assert!(!continue_key.ctrl && !continue_key.alt && !continue_key.meta);
+            assert!(enhance.alt);
+            assert!(!enhance.ctrl && !enhance.shift && !enhance.meta);
+        } else {
+            assert!(quick_submit.shift);
+            assert!(!quick_submit.ctrl && !quick_submit.alt && !quick_submit.meta);
+            assert!(continue_key.ctrl);
+            assert!(!continue_key.alt && !continue_key.shift && !continue_key.meta);
+            assert!(enhance.ctrl && enhance.shift);
+            assert!(!enhance.alt && !enhance.meta);
+        }
     }
 }
