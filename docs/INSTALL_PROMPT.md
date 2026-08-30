@@ -44,6 +44,7 @@
 使用当前操作系统对应的 MCP command，不得把 macOS 路径写进 Windows，也不得把 `%LOCALAPPDATA%` 原样当作所有客户端都能展开的命令路径。
 
 对于 Codex 等支持工具超时配置的客户端，为 `call_zhi` 保留足够长的等待时间；Codex 可使用 `tool_timeout_sec = 315360000`。
+全新 Codex 配置把 `call_zhi` 的工具级默认值写为 `approval_mode = "prompt"`；如果用户已有显式 `approval_mode`，必须保留已有值，不得覆盖。
 
 ## 第四步：配置通用系统提示词
 

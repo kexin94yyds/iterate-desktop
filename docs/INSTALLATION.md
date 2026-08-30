@@ -88,9 +88,13 @@ command = "这里填写当前系统的 mcp-server 绝对路径"
 args = []
 enabled = true
 tool_timeout_sec = 315360000
+
+[mcp_servers."iterate-zhi".tools.call_zhi]
+approval_mode = "prompt"
 ```
 
 较长的超时用于等待用户在 iterate 弹窗中回复；不要把正常等待误判为 MCP 卡死。
+全新安装默认使用 `approval_mode = "prompt"`。如果配置中已有显式 `approval_mode`，安装器必须保留已有值，不得覆盖用户选择。
 
 ### 其他客户端
 

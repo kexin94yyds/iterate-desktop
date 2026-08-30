@@ -23,6 +23,8 @@ test('canonical installation guide covers macOS, Windows, MCP startup, and verif
   assert.match(guide, /完全退出并重新打开|完全重启/)
   assert.match(guide, /最小验证/)
   assert.match(guide, /通用系统提示词/)
+  assert.match(guide, /approval_mode = "prompt"/)
+  assert.match(guide, /已有.*approval_mode.*保留|保留.*已有.*approval_mode/)
 })
 
 test('installation assistant prompt is cross-platform and resolves the MCP command per OS', () => {
@@ -37,6 +39,8 @@ test('installation assistant prompt is cross-platform and resolves the MCP comma
   assert.match(source, /解析成当前用户的绝对路径/)
   assert.match(source, /完全退出并重新打开/)
   assert.match(source, /最小调用/)
+  assert.match(source, /approval_mode = "prompt"/)
+  assert.match(source, /已有.*approval_mode.*保留|保留.*已有.*approval_mode/)
   assert.match(setupModule, /docs\/INSTALL_PROMPT\.md\?raw/)
 })
 
