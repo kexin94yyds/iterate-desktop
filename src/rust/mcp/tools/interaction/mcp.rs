@@ -170,7 +170,7 @@ fn normalize_terminal_response(
 ) -> (String, Option<String>) {
     // create_tauri_popup 保留共享的通用取消语义。只有 zhi/call_zhi 在这里
     // 将独立弹窗标题栏关闭产生的空成功输出归一化为终止型响应。
-    if response.trim() == "用户取消了操作" {
+    if cfg!(target_os = "windows") && response.trim() == "用户取消了操作" {
         return (
             crate::mcp::build_send_response(
                 None,
@@ -475,6 +475,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_os = "windows")]
     #[test]
     fn clean_standalone_popup_dismissal_is_terminal_only_for_zhi_boundary() {
         let (normalized, end_source) = normalize_terminal_response(
@@ -494,7 +495,10 @@ mod tests {
             normalized["metadata"]["source"],
             crate::conversation::POPUP_CLOSED_SOURCE
         );
+    }
 
+    #[test]
+    fn ordinary_cancel_response_keeps_its_existing_semantics() {
         let (cancelled, end_source) = normalize_terminal_response("CANCELLED", None);
         assert_eq!(cancelled, "CANCELLED");
         assert!(end_source.is_none());
