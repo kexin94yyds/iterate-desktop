@@ -201,7 +201,18 @@ onMounted(async () => {
       return
     }
 
-    await speechRuntimeHost.initialize()
+    if (windowsPlatform) {
+      try {
+        await speechRuntimeHost.initialize()
+      }
+      catch (error) {
+        console.warn('语音运行时初始化失败，主界面将继续启动:', error)
+        await reportTrialDebug(`onMounted:speechRuntimeDegraded ${String(error)}`)
+      }
+    }
+    else {
+      await speechRuntimeHost.initialize()
+    }
 
     if (mcpLaunchContext.value.kind === 'invalid')
       await reportTrialDebug(`onMounted:mcpLaunchInvalid ${mcpLaunchContext.value.error ?? 'unknown'}`)
