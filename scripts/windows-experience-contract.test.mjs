@@ -132,3 +132,35 @@ test('Windows bundle uses a current-user NSIS installer', () => {
   const config = JSON.parse(source('tauri.conf.json'))
   assert.equal(config.bundle.windows.nsis.installMode, 'currentUser')
 })
+
+test('Windows popup shortcuts use the new defaults and safely migrate only the complete legacy set', () => {
+  const settings = source('src/rust/config/settings.rs')
+  const storage = source('src/rust/config/storage.rs')
+  const shortcuts = source('src/frontend/composables/useShortcuts.ts')
+  const popupInput = source('src/frontend/components/popup/PopupInput.vue')
+  const popupActions = source('src/frontend/components/popup/PopupActions.vue')
+
+  assert.match(settings, /let is_macos = cfg!\(target_os = "macos"\)/)
+  assert.match(settings, /quick_submit[\s\S]*?shift: !is_macos,[\s\S]*?meta: is_macos/)
+  assert.match(settings, /enhance[\s\S]*?ctrl: !is_macos,[\s\S]*?alt: is_macos,[\s\S]*?shift: !is_macos/)
+  assert.match(settings, /continue[\s\S]*?ctrl: !is_macos,[\s\S]*?shift: is_macos/)
+
+  assert.match(storage, /fn has_complete_legacy_popup_defaults/)
+  assert.match(storage, /if has_complete_legacy_popup_defaults\(config\)/)
+  assert.match(storage, /for key in \["quick_submit", "continue", "enhance"\]/)
+  assert.match(storage, /if !config\.shortcut_config\.shortcuts\.contains_key\(&key\)/)
+  assert.match(storage, /merge_migrates_only_the_complete_legacy_popup_default_set/)
+  assert.match(storage, /merge_preserves_the_whole_set_when_one_legacy_binding_was_customized/)
+  assert.doesNotMatch(storage, /is_old_ctrl_shift|is_old_ctrl|is_old_shift|is_old_alt/)
+
+  assert.match(shortcuts, /event\.isComposing/)
+  assert.match(shortcuts, /event\.keyCode === 229/)
+  assert.match(shortcuts, /event\.repeat/)
+  assert.match(shortcuts, /document\.visibilityState !== 'hidden' && document\.hasFocus\(\)/)
+  assert.match(shortcuts, /event\.ctrlKey === shortcutKey\.ctrl[\s\S]*?event\.shiftKey === shortcutKey\.shift/)
+  assert.match(popupInput, /isComposing\.value \|\| event\.isComposing \|\| event\.keyCode === 229 \|\| event\.repeat/)
+
+  assert.match(popupActions, /props\.canSubmit && !props\.submitting[\s\S]*?handleSubmit\(\)/)
+  assert.match(popupActions, /props\.canSubmit && !props\.submitting[\s\S]*?handleGoalSubmit\(\)/)
+  assert.match(popupActions, /!props\.submitting[\s\S]*?handleContinue\(\)/)
+})

@@ -180,49 +180,213 @@ fn get_standalone_config_path() -> Result<PathBuf> {
     Ok(cunzhi_config_dir()?.join("config.json"))
 }
 
+fn matches_legacy_popup_binding(
+    binding: &super::settings::ShortcutBinding,
+    id: &str,
+    name: &str,
+    description: &str,
+    action: &str,
+    ctrl: bool,
+    alt: bool,
+    shift: bool,
+    meta: bool,
+) -> bool {
+    let key = &binding.key_combination;
+    binding.id == id
+        && binding.name == name
+        && binding.description == description
+        && binding.action == action
+        && binding.enabled
+        && binding.scope == "popup"
+        && key.key == "Enter"
+        && key.ctrl == ctrl
+        && key.alt == alt
+        && key.shift == shift
+        && key.meta == meta
+}
+
+fn has_complete_legacy_popup_defaults(config: &AppConfig) -> bool {
+    if cfg!(target_os = "macos") {
+        return false;
+    }
+
+    let shortcuts = &config.shortcut_config.shortcuts;
+    shortcuts.get("quick_submit").is_some_and(|binding| {
+        matches_legacy_popup_binding(
+            binding,
+            "quick_submit",
+            "快速发送",
+            "快速提交当前输入内容",
+            "submit",
+            false,
+            false,
+            false,
+            true,
+        )
+    }) && shortcuts.get("continue").is_some_and(|binding| {
+        matches_legacy_popup_binding(
+            binding,
+            "continue",
+            "继续",
+            "继续对话",
+            "continue",
+            false,
+            false,
+            true,
+            false,
+        )
+    }) && shortcuts.get("enhance").is_some_and(|binding| {
+        matches_legacy_popup_binding(
+            binding,
+            "enhance",
+            "增强",
+            "增强当前输入内容",
+            "enhance",
+            false,
+            true,
+            false,
+            false,
+        )
+    })
+}
+
 /// 合并默认快捷键配置，确保新的默认快捷键被添加到现有配置中
 fn merge_default_shortcuts(config: &mut AppConfig) {
     let default_shortcuts = default_shortcuts();
 
-    // 遍历所有默认快捷键
+    // Windows/Linux 历史版本会同时写入 Meta+Enter、Shift+Enter、Alt+Enter。
+    // 只有三项的全部字段都仍是这套完整旧默认值时才迁移；任意一项被用户
+    // 编辑、禁用或改名，都视为自定义配置并完整保留。
+    if has_complete_legacy_popup_defaults(config) {
+        for key in ["quick_submit", "continue", "enhance"] {
+            if let Some(default_binding) = default_shortcuts.get(key) {
+                config
+                    .shortcut_config
+                    .shortcuts
+                    .insert(key.to_string(), default_binding.clone());
+            }
+        }
+    }
+
+    // 只补充新版本新增但用户配置中尚不存在的快捷键。
+    // 除上面的完整历史默认组合外，不按单个按键值猜测或覆盖已有绑定。
     for (key, default_binding) in default_shortcuts {
         if !config.shortcut_config.shortcuts.contains_key(&key) {
-            // 如果用户配置中不存在，则添加
             config
                 .shortcut_config
                 .shortcuts
                 .insert(key, default_binding);
-        } else if key == "enhance" {
-            // 特殊处理：迁移旧的增强快捷键默认值到 Shift+Enter
-            let existing_binding = config.shortcut_config.shortcuts.get(&key).unwrap();
-            let kc = &existing_binding.key_combination;
-
-            // 旧默认值1: Ctrl+Shift+Enter
-            let is_old_ctrl_shift = kc.key == "Enter" && kc.ctrl && kc.shift && !kc.alt && !kc.meta;
-            // 旧默认值2: Ctrl+Enter
-            let is_old_ctrl = kc.key == "Enter" && kc.ctrl && !kc.shift && !kc.alt && !kc.meta;
-            // 旧默认值3: Shift+Enter
-            let is_old_shift = kc.key == "Enter" && !kc.ctrl && kc.shift && !kc.alt && !kc.meta;
-
-            if is_old_ctrl_shift || is_old_ctrl || is_old_shift {
-                // 更新为新的默认值 (Alt+Enter)
-                config
-                    .shortcut_config
-                    .shortcuts
-                    .insert(key, default_binding);
-            }
-        } else if key == "continue" {
-            // 迁移继续快捷键：Alt+Enter → Shift+Enter
-            let existing_binding = config.shortcut_config.shortcuts.get(&key).unwrap();
-            let kc = &existing_binding.key_combination;
-
-            let is_old_alt = kc.key == "Enter" && !kc.ctrl && !kc.shift && kc.alt && !kc.meta;
-            if is_old_alt {
-                config
-                    .shortcut_config
-                    .shortcuts
-                    .insert(key, default_binding);
-            }
         }
+    }
+}
+
+#[cfg(test)]
+mod shortcut_tests {
+    use super::merge_default_shortcuts;
+    use crate::config::AppConfig;
+
+    #[cfg(not(target_os = "macos"))]
+    #[test]
+    fn merge_migrates_only_the_complete_legacy_popup_default_set() {
+        let mut config = AppConfig::default();
+        let quick_submit = config
+            .shortcut_config
+            .shortcuts
+            .get_mut("quick_submit")
+            .unwrap();
+        quick_submit.key_combination.shift = false;
+        quick_submit.key_combination.meta = true;
+
+        let continue_key = config
+            .shortcut_config
+            .shortcuts
+            .get_mut("continue")
+            .unwrap();
+        continue_key.key_combination.ctrl = false;
+        continue_key.key_combination.shift = true;
+
+        let enhance = config.shortcut_config.shortcuts.get_mut("enhance").unwrap();
+        enhance.key_combination.ctrl = false;
+        enhance.key_combination.alt = true;
+        enhance.key_combination.shift = false;
+
+        merge_default_shortcuts(&mut config);
+
+        let quick_submit = &config.shortcut_config.shortcuts["quick_submit"].key_combination;
+        assert!(quick_submit.shift);
+        assert!(!quick_submit.ctrl && !quick_submit.alt && !quick_submit.meta);
+
+        let continue_key = &config.shortcut_config.shortcuts["continue"].key_combination;
+        assert!(continue_key.ctrl);
+        assert!(!continue_key.alt && !continue_key.shift && !continue_key.meta);
+
+        let enhance = &config.shortcut_config.shortcuts["enhance"].key_combination;
+        assert!(enhance.ctrl && enhance.shift);
+        assert!(!enhance.alt && !enhance.meta);
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    #[test]
+    fn merge_preserves_the_whole_set_when_one_legacy_binding_was_customized() {
+        let mut config = AppConfig::default();
+        let quick_submit = config
+            .shortcut_config
+            .shortcuts
+            .get_mut("quick_submit")
+            .unwrap();
+        quick_submit.key_combination.shift = false;
+        quick_submit.key_combination.meta = true;
+
+        let continue_key = config
+            .shortcut_config
+            .shortcuts
+            .get_mut("continue")
+            .unwrap();
+        continue_key.key_combination.ctrl = false;
+        continue_key.key_combination.shift = true;
+
+        let enhance = config.shortcut_config.shortcuts.get_mut("enhance").unwrap();
+        enhance.key_combination.key = "F8".to_string();
+        enhance.key_combination.ctrl = true;
+        enhance.key_combination.alt = false;
+        enhance.key_combination.shift = false;
+
+        merge_default_shortcuts(&mut config);
+
+        let quick_submit = &config.shortcut_config.shortcuts["quick_submit"].key_combination;
+        assert!(quick_submit.meta);
+        assert!(!quick_submit.ctrl && !quick_submit.alt && !quick_submit.shift);
+
+        let continue_key = &config.shortcut_config.shortcuts["continue"].key_combination;
+        assert!(continue_key.shift);
+        assert!(!continue_key.ctrl && !continue_key.alt && !continue_key.meta);
+
+        let enhance = &config.shortcut_config.shortcuts["enhance"].key_combination;
+        assert_eq!(enhance.key, "F8");
+        assert!(enhance.ctrl);
+    }
+
+    #[test]
+    fn merge_preserves_existing_user_shortcuts_and_adds_only_missing_actions() {
+        let mut config = AppConfig::default();
+        let quick_submit = config
+            .shortcut_config
+            .shortcuts
+            .get_mut("quick_submit")
+            .expect("quick submit default");
+        quick_submit.key_combination.key = "F8".to_string();
+        quick_submit.key_combination.ctrl = true;
+        quick_submit.key_combination.alt = false;
+        quick_submit.key_combination.shift = false;
+        quick_submit.key_combination.meta = false;
+        config.shortcut_config.shortcuts.remove("continue");
+
+        merge_default_shortcuts(&mut config);
+
+        let preserved = &config.shortcut_config.shortcuts["quick_submit"].key_combination;
+        assert_eq!(preserved.key, "F8");
+        assert!(preserved.ctrl);
+        assert!(!preserved.alt && !preserved.shift && !preserved.meta);
+        assert!(config.shortcut_config.shortcuts.contains_key("continue"));
     }
 }
