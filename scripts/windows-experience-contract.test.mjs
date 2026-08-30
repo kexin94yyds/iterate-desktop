@@ -102,7 +102,7 @@ test('explicit conversation end is exact and is normalized at the response bound
   )
 })
 
-test('popup close ends only the current interaction while the native titlebar still exits', () => {
+test('popup close is request-scoped while only the resident titlebar exits globally', () => {
   const header = source('src/frontend/components/popup/PopupHeader.vue')
   const content = source('src/frontend/components/AppContent.vue')
   const app = source('src/frontend/App.vue')
@@ -115,7 +115,17 @@ test('popup close ends only the current interaction while the native titlebar st
   assert.match(handler, /handleMcpCloseCurrentDialog/)
   assert.match(handler, /source: 'popup_closed'/)
   assert.match(handler, /resolvingRequestIds/)
+  assert.match(windowEvents, /is_windows_standalone_mcp_runtime/)
+  assert.match(windowEvents, /force_exit_app\(app_handle\)/)
   assert.match(windowEvents, /handle_system_exit_request[\s\S]*?true/)
+  assert.ok(
+    windowEvents.indexOf('if standalone_mcp_runtime')
+    < windowEvents.indexOf('handle_system_exit_request'),
+    'standalone popup close must be routed before resident global exit',
+  )
+
+  const loopSession = source('src/rust/server/loop_session.rs')
+  assert.match(loopSession, /is_loop_stop_source[\s\S]*?popup_closed/)
 })
 
 test('Windows bundle uses a current-user NSIS installer', () => {

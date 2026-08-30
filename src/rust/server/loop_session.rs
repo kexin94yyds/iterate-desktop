@@ -259,7 +259,10 @@ pub fn is_loop_start_source(source: &str) -> bool {
 pub fn is_loop_stop_source(source: &str) -> bool {
     matches!(
         source.trim(),
-        "popup_loop_stop" | "web_bridge_loop_stop" | "explicit_conversation_end"
+        "popup_loop_stop"
+            | "web_bridge_loop_stop"
+            | "explicit_conversation_end"
+            | "popup_closed"
     )
 }
 
@@ -341,6 +344,7 @@ mod tests {
         assert!(is_loop_stop_source("popup_loop_stop"));
         assert!(is_loop_stop_source("web_bridge_loop_stop"));
         assert!(is_loop_stop_source("explicit_conversation_end"));
+        assert!(is_loop_stop_source("popup_closed"));
         assert!(!is_loop_stop_source("loop_auto_continue"));
     }
 

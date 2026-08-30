@@ -9,6 +9,24 @@ use tauri::{AppHandle, Manager, WindowEvent};
 static FOCUS_PERSIST_GENERATION: AtomicU64 = AtomicU64::new(0);
 const WINDOW_REGISTRY_CLEANUP_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
+fn is_standalone_mcp_runtime(args: &[String], standalone_mode: bool) -> bool {
+    standalone_mode || args.iter().skip(1).any(|arg| arg == "--mcp-request")
+}
+
+fn is_windows_standalone_mcp_runtime() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        let args = std::env::args().collect::<Vec<_>>();
+        return is_standalone_mcp_runtime(
+            &args,
+            std::env::var_os("ITERATE_STANDALONE_MODE").is_some(),
+        );
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    false
+}
+
 fn schedule_focus_persist() {
     let generation = FOCUS_PERSIST_GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
     tauri::async_runtime::spawn(async move {
@@ -64,6 +82,7 @@ pub fn setup_window_event_listeners(app_handle: &AppHandle) {
 
     if let Some(window) = app_handle.get_webview_window("main") {
         let app_handle_clone = app_handle.clone();
+        let standalone_mcp_runtime = is_windows_standalone_mcp_runtime();
 
         window.on_window_event(move |event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
@@ -73,6 +92,19 @@ pub fn setup_window_event_listeners(app_handle: &AppHandle) {
                 let app_handle = app_handle_clone.clone();
                 if let Some(window) = app_handle.get_webview_window("main") {
                     let _ = window.hide();
+                }
+
+                if standalone_mcp_runtime {
+                    // Windows 独立 MCP 弹窗的标题栏 X 只结束当前子进程。
+                    // 不进入全局关闭流程，父进程会把无响应的正常退出归一化为
+                    // popup_closed，从而结束当前 zhi/call_zhi 请求。
+                    tauri::async_runtime::spawn(async move {
+                        log::debug!("🖱️ 独立 MCP 弹窗关闭，仅退出当前弹窗进程");
+                        if let Err(error) = crate::ui::exit::force_exit_app(app_handle).await {
+                            log_important!(error, "关闭独立 MCP 弹窗失败: {}", error);
+                        }
+                    });
+                    return;
                 }
 
                 // 异步处理退出请求
@@ -101,5 +133,30 @@ pub fn setup_window_event_listeners(app_handle: &AppHandle) {
                 });
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_standalone_mcp_runtime;
+
+    #[test]
+    fn standalone_mcp_runtime_is_limited_to_explicit_popup_processes() {
+        assert!(is_standalone_mcp_runtime(
+            &["iterate.exe".to_string(), "--mcp-request".to_string()],
+            false,
+        ));
+        assert!(is_standalone_mcp_runtime(
+            &["iterate.exe".to_string()],
+            true,
+        ));
+        assert!(!is_standalone_mcp_runtime(
+            &["iterate.exe".to_string()],
+            false,
+        ));
+        assert!(!is_standalone_mcp_runtime(
+            &["iterate.exe".to_string(), "--serve".to_string()],
+            false,
+        ));
     }
 }

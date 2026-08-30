@@ -102,7 +102,8 @@ impl InteractionTool {
         match create_tauri_popup(&popup_request) {
             Ok(response) => {
                 mark_live_goal_user_response_received(project_path.as_deref(), &request_id);
-                let (response, end_source) = normalize_terminal_response(&response);
+                let (response, end_source) =
+                    normalize_terminal_response(&response, Some(request_id.clone()));
 
                 // 记录对话日志
                 log_conversation(
@@ -163,7 +164,25 @@ fn normalize_zhi_message(message: &str) -> String {
     }
 }
 
-fn normalize_terminal_response(response: &str) -> (String, Option<String>) {
+fn normalize_terminal_response(
+    response: &str,
+    request_id: Option<String>,
+) -> (String, Option<String>) {
+    // create_tauri_popup 保留共享的通用取消语义。只有 zhi/call_zhi 在这里
+    // 将独立弹窗标题栏关闭产生的空成功输出归一化为终止型响应。
+    if response.trim() == "用户取消了操作" {
+        return (
+            crate::mcp::build_send_response(
+                None,
+                vec![],
+                vec![],
+                request_id,
+                crate::conversation::POPUP_CLOSED_SOURCE,
+            ),
+            Some(crate::conversation::POPUP_CLOSED_SOURCE.to_string()),
+        );
+    }
+
     let Ok(mut value) = serde_json::from_str::<serde_json::Value>(response) else {
         return (response.to_string(), None);
     };
@@ -404,7 +423,7 @@ mod tests {
             "metadata": {"source": "popup"}
         })
         .to_string();
-        let (normalized, end_source) = normalize_terminal_response(&response);
+        let (normalized, end_source) = normalize_terminal_response(&response, None);
         assert_eq!(
             end_source.as_deref(),
             Some(crate::conversation::EXPLICIT_CONVERSATION_END_SOURCE)
@@ -420,7 +439,7 @@ mod tests {
         );
 
         let ordinary = serde_json::json!({"user_input": "如何结束对话"}).to_string();
-        let (unchanged, end_source) = normalize_terminal_response(&ordinary);
+        let (unchanged, end_source) = normalize_terminal_response(&ordinary, None);
         assert!(end_source.is_none());
         assert_eq!(unchanged, ordinary);
     }
@@ -434,7 +453,7 @@ mod tests {
             "metadata": {"source": "popup"}
         })
         .to_string();
-        let (normalized, end_source) = normalize_terminal_response(&option_response);
+        let (normalized, end_source) = normalize_terminal_response(&option_response, None);
         assert_eq!(
             end_source.as_deref(),
             Some(crate::conversation::EXPLICIT_CONVERSATION_END_SOURCE)
@@ -449,11 +468,36 @@ mod tests {
             "metadata": {"source": "popup_closed"}
         })
         .to_string();
-        let (_, end_source) = normalize_terminal_response(&close_response);
+        let (_, end_source) = normalize_terminal_response(&close_response, None);
         assert_eq!(
             end_source.as_deref(),
             Some(crate::conversation::POPUP_CLOSED_SOURCE)
         );
+    }
+
+    #[test]
+    fn clean_standalone_popup_dismissal_is_terminal_only_for_zhi_boundary() {
+        let (normalized, end_source) = normalize_terminal_response(
+            "用户取消了操作",
+            Some("request-123".to_string()),
+        );
+
+        assert_eq!(
+            end_source.as_deref(),
+            Some(crate::conversation::POPUP_CLOSED_SOURCE)
+        );
+        let normalized: serde_json::Value = serde_json::from_str(&normalized).unwrap();
+        assert_eq!(normalized["user_input"], serde_json::Value::Null);
+        assert_eq!(normalized["selected_options"], serde_json::json!([]));
+        assert_eq!(normalized["metadata"]["request_id"], "request-123");
+        assert_eq!(
+            normalized["metadata"]["source"],
+            crate::conversation::POPUP_CLOSED_SOURCE
+        );
+
+        let (cancelled, end_source) = normalize_terminal_response("CANCELLED", None);
+        assert_eq!(cancelled, "CANCELLED");
+        assert!(end_source.is_none());
     }
 
     #[test]
