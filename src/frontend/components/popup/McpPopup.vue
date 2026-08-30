@@ -939,7 +939,7 @@ async function handleSubmit() {
       metadata: {
         timestamp: new Date().toISOString(),
         request_id: props.request?.id || null,
-        source: resolveSubmitSource(finalUserInput, selectedOptions.value),
+        source: resolveSubmitSource(finalUserInput ?? '', selectedOptions.value),
       },
     }
 
