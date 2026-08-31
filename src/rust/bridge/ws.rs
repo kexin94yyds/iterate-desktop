@@ -1764,6 +1764,7 @@ fn atomic_write_private_file(path: &FilePath, content: &[u8]) -> Result<(), Stri
             .map_err(|err| format!("同步设备授权临时文件失败: {}", err))?;
         std::fs::rename(&temp_path, path)
             .map_err(|err| format!("原子替换设备授权失败: {}", err))?;
+        #[cfg(unix)]
         if let Some(parent) = path.parent() {
             File::open(parent)
                 .and_then(|directory| directory.sync_all())
@@ -15554,6 +15555,7 @@ mod tests {
         clear_room_submit_outcome_cache_for_tests();
     }
 
+    #[cfg(not(target_os = "windows"))]
     #[tokio::test]
     async fn bridge_publish_room_submit_rejects_stale_window_request() {
         let _room_guard = ROOM_SUBMIT_TEST_LOCK.lock().await;
@@ -15601,6 +15603,7 @@ mod tests {
         clear_room_submit_outcome_cache_for_tests();
     }
 
+    #[cfg(not(target_os = "windows"))]
     #[tokio::test]
     async fn bridge_publish_mcp_state_rejects_stale_window_request_without_side_effects() {
         let _route_guard = ROUTE_DEBUG_TEST_LOCK.lock().await;
@@ -15651,6 +15654,7 @@ mod tests {
         clear_mcp_state_route_for_test(&new_request_id, &project_path).await;
     }
 
+    #[cfg(not(target_os = "windows"))]
     #[tokio::test]
     async fn apns_notify_rejects_stale_window_request_without_early_cache_or_notification_route() {
         let _route_guard = ROUTE_DEBUG_TEST_LOCK.lock().await;
@@ -18610,7 +18614,12 @@ mod tests {
         std::fs::write(&file_path, b"test image").expect("write test image");
         clear_markdown_image_registry_for_tests();
 
-        let message = format!("![截图]({})", file_path.to_string_lossy());
+        let encoded_path = percent_encoding::utf8_percent_encode(
+            &file_path.to_string_lossy(),
+            percent_encoding::NON_ALPHANUMERIC,
+        )
+        .to_string();
+        let message = format!("![截图](/image?path={encoded_path})");
         let rewritten = rewrite_markdown_local_images(&message).expect("image should rewrite");
         let image_id = rewritten
             .split("/image?id=")
@@ -19995,7 +20004,13 @@ utun0: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1380
             vec![home.canonicalize().unwrap().display().to_string()]
         );
         assert_eq!(
-            normalize_file_browser_roots(&["/".to_string()]),
+            normalize_file_browser_roots(&[directory
+                .path()
+                .ancestors()
+                .last()
+                .expect("filesystem root")
+                .display()
+                .to_string(),]),
             Err("filesystem_root_not_allowed")
         );
         assert_eq!(
@@ -20079,6 +20094,7 @@ utun0: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1380
         assert!(store.devices[0].file_browser_roots.is_empty());
     }
 
+    #[cfg(unix)]
     #[test]
     fn paired_device_store_concurrent_updates_preserve_both_devices() {
         let directory = tempfile::tempdir().expect("temporary paired-device directory");

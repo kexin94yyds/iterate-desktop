@@ -844,6 +844,7 @@ pub fn build_tauri_app() -> Builder<tauri::Wry> {
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
+            crate::app::windows_lifecycle::start_tauri_shutdown_listener(app_handle.clone());
             crate::native_speech::set_app_handle(app_handle.clone());
             crate::ui::live_goal::start_live_goal_tray_timer(app_handle.clone());
             crate::ui::codex_goal_observer::start_codex_goal_observer(app_handle.clone());
@@ -905,6 +906,19 @@ pub fn run_tauri_app() {
     install_android_rustls_crypto_provider();
 
     let args: Vec<String> = std::env::args().collect();
+    let instance_role = if is_standalone_mcp_launch(&args) {
+        "popup"
+    } else {
+        "gui"
+    };
+    let _instance_guard =
+        match crate::app::windows_lifecycle::register_current_instance(instance_role, None) {
+            Ok(guard) => Some(guard),
+            Err(error) => {
+                log::warn!("登记 iterate Windows 实例失败: {error}");
+                None
+            }
+        };
     prepare_macos_standalone_launch(&args);
 
     let context = build_tauri_context();

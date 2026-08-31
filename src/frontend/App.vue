@@ -329,6 +329,7 @@ onUnmounted(() => {
               :mcp-request="mcpRequest" :show-mcp-popup="showMcpPopup" :app-config="appConfig"
               :is-initializing="isInitializing" :is-muted="isMuted"
               @mcp-response="handlers.onMcpResponse" @mcp-cancel="handlers.onMcpCancel"
+              @mcp-close-current-dialog="handlers.onMcpCloseCurrentDialog"
               @theme-change="handlers.onThemeChange" @toggle-always-on-top="handlers.onToggleAlwaysOnTop"
               @toggle-mute="handlers.onToggleMute"
               @toggle-audio-notification="handlers.onToggleAudioNotification"
