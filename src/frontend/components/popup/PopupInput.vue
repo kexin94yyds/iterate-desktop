@@ -87,6 +87,7 @@ const contextPromptStateCache = new Map<string, Record<string, Pick<CustomPrompt
 // 响应式数据
 const userInput = ref('')
 const selectedOptions = ref<string[]>([])
+const windowsPlatform = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('WIN')
 const uploadedImages = ref<string[]>([])
 const attachedFiles = ref<PopupFileAttachment[]>([])
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -1735,6 +1736,9 @@ async function setupWindowMoveListener() {
 
     // 监听窗口移动事件
     unlistenWindowMove = await webview.onMoved(() => {
+      if (windowsPlatform)
+        return
+
       // 窗口移动后修复输入法位置
       fixIMEPosition()
     })

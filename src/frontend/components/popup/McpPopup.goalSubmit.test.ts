@@ -9,6 +9,11 @@ const settingsTabSource = await readFile(new URL('../tabs/SettingsTab.vue', impo
 const mainLayoutSource = await readFile(new URL('../layout/MainLayout.vue', import.meta.url), 'utf8')
 
 describe('McpPopup goal submit attachments', () => {
+  it('allows a predefined-option-only reply without passing null into submit-source parsing', () => {
+    assert.match(source, /return selectedOptions\.value\.length > 0/)
+    assert.match(source, /resolveSubmitSource\(finalUserInput \?\? '', selectedOptions\.value\)/)
+  })
+
   it('combines selected files into the GoalRun target without leaking image internals', () => {
     assert.match(source, /function buildGoalTargetText\(/)
     assert.match(source, /function buildSelectedOptionsContext\(/)

@@ -54,6 +54,16 @@ test('frontend and package defaults preserve macOS behavior', () => {
   assert.equal(pkg.scripts['tauri:build'], 'cargo tauri build')
 })
 
+test('Windows skips the macOS-only speech runtime startup gate and enables HTTP2 support', () => {
+  const app = source('src/frontend/App.vue')
+  const cargo = source('Cargo.toml')
+  assert.match(app, /if \(!windowsPlatform\)\s+await speechRuntimeHost\.initialize\(\)/)
+  assert.match(
+    cargo,
+    /\[target\.'cfg\(target_os = "windows"\)'\.dependencies\][\s\S]*?reqwest = \{[\s\S]*?features = \[[\s\S]*?"native-tls-alpn"[\s\S]*?"http2"[\s\S]*?\]/,
+  )
+})
+
 test('Windows bundle uses a current-user NSIS installer', () => {
   const config = JSON.parse(source('tauri.conf.json'))
   assert.equal(config.bundle.windows.nsis.installMode, 'currentUser')
@@ -72,4 +82,13 @@ test('Windows package smoke waits for the GUI-subsystem activation probe and cap
     assert.match(smoke, /WaitForExit\(\)/, path)
     assert.doesNotMatch(smoke, /\$ActivationProbe\s*=\s*&/, path)
   }
+})
+
+test('Windows popup movement skips the blur-focus IME position hack', () => {
+  const popupInput = source('src/frontend/components/popup/PopupInput.vue')
+  assert.match(popupInput, /const windowsPlatform = typeof navigator !== 'undefined' && navigator\.platform\.toUpperCase\(\)\.includes\('WIN'\)/)
+  assert.match(
+    popupInput,
+    /webview\.onMoved\(\(\) => \{[\s\S]*?if \(windowsPlatform\)[\s\S]*?return[\s\S]*?fixIMEPosition\(\)/,
+  )
 })
