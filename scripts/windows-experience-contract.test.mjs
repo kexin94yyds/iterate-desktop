@@ -18,6 +18,18 @@ test('bridge health probe uses reqwest only on Windows and preserves the Unix cu
   assert.match(setup, /#\[cfg\(not\(target_os = "windows"\)\)\]\s*fn bridge_http_healthy[\s\S]*?command_stdout\("curl"/)
 })
 
+test('reqwest ALPN support always includes the HTTP/2 client implementation', () => {
+  const cargo = source('Cargo.toml')
+  const reqwestFeatureLists = [...cargo.matchAll(/reqwest\s*=\s*\{[\s\S]*?features\s*=\s*\[([\s\S]*?)\]\s*\}/g)]
+    .map(match => match[1])
+    .filter(features => features.includes('native-tls-alpn'))
+
+  assert.ok(reqwestFeatureLists.length > 0, 'expected at least one reqwest ALPN configuration')
+  for (const features of reqwestFeatureLists) {
+    assert.match(features, /"http2"/, 'ALPN may negotiate h2, so reqwest must compile HTTP/2 support')
+  }
+})
+
 test('Windows shows the main window before background setup while non-Windows keeps blocking setup', () => {
   const builder = source('src/rust/app/builder.rs')
   const showIndex = builder.indexOf('window.show()')
@@ -96,15 +108,17 @@ test('frontend and package defaults preserve macOS behavior', () => {
   assert.equal(pkg.scripts['tauri:build'], 'cargo tauri build')
 })
 
-test('manual close blocks automatic zhi startup until a shortcut launch clears it', () => {
+test('manual close stops current processes while a later MCP call can summon iterate again', () => {
   const lifecycle = source('src/rust/app/windows_lifecycle.rs')
   const main = source('src/rust/main.rs')
   const mcpServer = source('src/bin/mcp-server.rs')
   assert.match(lifecycle, /args\.len\(\) != 1/)
   assert.match(lifecycle, /remove_file\(manual_stop_path\(\)\)/)
+  assert.match(lifecycle, /pub fn activate_mcp_launch\(\)[\s\S]*?reactivate_after_manual_stop\(\)/)
+  assert.match(lifecycle, /fn reactivate_after_manual_stop\(\)[\s\S]*?reset_shutdown_event\(\)/)
   assert.match(main, /activate_manual_launch_if_requested/)
-  assert.match(mcpServer, /is_manually_stopped\(\)/)
-  assert.match(mcpServer, /MANUALLY_STOPPED_MESSAGE/)
+  assert.match(mcpServer, /call_zhi[\s\S]*?activate_mcp_launch\(\)/)
+  assert.doesNotMatch(mcpServer, /call_zhi[\s\S]{0,500}?MANUALLY_STOPPED_MESSAGE/)
 })
 
 test('explicit conversation end is exact and is normalized at the response boundary', () => {
