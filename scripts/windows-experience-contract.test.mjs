@@ -147,6 +147,12 @@ test('explicit conversation end is exact and is normalized at the response bound
     /!isExplicitConversationEndInput\(userInput\.value\)[\s\S]*?generateConditionalContent\(\)/,
     'explicit end commands must reach the Rust response boundary without appended context',
   )
+  assert.match(popup, /CONTEXT_INJECTION_START = '<!-- CONTEXT_INJECTION_START -->'/)
+  assert.match(
+    popup,
+    /CONTEXT_INJECTION_START[\s\S]*?conditionalTexts\.join\('\\n'\)/,
+    'automatic context must carry the protocol boundary consumed by MCP response readers',
+  )
 })
 
 test('popup close ends only the current interaction while the native titlebar still exits', () => {
