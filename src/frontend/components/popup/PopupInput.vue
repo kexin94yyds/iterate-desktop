@@ -344,6 +344,7 @@ function emitUpdate() {
 
   emit('update', {
     userInput: finalUserInput,
+    rawUserInput: userInput.value,
     selectedOptions: selectedOptions.value,
     draggedImages: uploadedImages.value,
     attachedFiles: attachedFiles.value,

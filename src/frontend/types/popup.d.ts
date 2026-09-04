@@ -105,6 +105,7 @@ export interface PopupFileAttachment {
 
 export interface PopupInputData {
   userInput?: string
+  rawUserInput?: string
   selectedOptions?: string[]
   draggedImages?: string[]
   attachedFiles?: PopupFileAttachment[]
