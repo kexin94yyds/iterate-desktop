@@ -1687,6 +1687,7 @@ onUnmounted(async () => {
           :shortcut-enabled="localShortcutEnabled"
           :project-path="effectiveProjectPath"
           :codex-thread-id="props.mcpRequest?.codex_thread_id"
+          :conversation-title="props.mcpRequest?.conversation_title"
           :link-url="props.mcpRequest?.link_url"
           :link-title="props.mcpRequest?.link_title"
           :quota-providers="quotaProviders"
